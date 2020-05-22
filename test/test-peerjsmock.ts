@@ -69,6 +69,10 @@ describe("PeerJS mock", () => {
                 it("invoked the data listener on B", () => {
                     expect(spyDataB).toBeCalledWith(someOtherData);
                 });
+
+                it("invoked the data listener on A only once", () => {
+                    expect(spyDataA).not.toBeCalledWith(someOtherData);
+                });
             });
         });
     });

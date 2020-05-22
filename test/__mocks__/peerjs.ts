@@ -1,4 +1,5 @@
 import { v4 as uuid } from "uuid";
+import { addEntry } from "../message-history";
 
 const connections = new Map<string, string[]>();
 const instances = new Map<string, MockPeerJS>();
@@ -20,6 +21,7 @@ export class MockPeerJS {
     public destroy = jest.fn();
 
     public on = jest.fn((eventName, handler) => {
+        if (eventName === "open") { handler(); }
         this.listeners.push({ eventName, handler });
     });
 
@@ -31,8 +33,12 @@ export class MockPeerJS {
 
     public connect = jest.fn((remoteId) => {
         connections.get(remoteId)!.push(this.id);
-        const connection = {
+        instances.get(remoteId)!.invokeListener("connection", {
             on: jest.fn((eventName: string, handler: Function) => {
+                if (eventName === "open") {
+                    handler();
+                    return;
+                }
                 openConnections.push({
                     from: this.id,
                     to: remoteId,
@@ -40,13 +46,39 @@ export class MockPeerJS {
                 });
             }),
             send: jest.fn((data: any) => {
+                addEntry({
+                    from: remoteId,
+                    to: this.id,
+                    data,
+                });
+                openConnections
+                    .filter(({ from, to }) => from === remoteId && to === this.id)
+                    .forEach(({ handler }) => handler(data));
+            }),
+        });
+        return {
+            on: jest.fn((eventName: string, handler: Function) => {
+                if (eventName === "open") {
+                    handler();
+                    return;
+                }
+                openConnections.push({
+                    from: remoteId,
+                    to: this.id,
+                    handler,
+                });
+            }),
+            send: jest.fn((data: any) => {
+                addEntry({
+                    from: this.id,
+                    to: remoteId,
+                    data,
+                });
                 openConnections
                     .filter(({ from, to }) => from === this.id && to === remoteId)
                     .forEach(({ handler }) => handler(data));
             }),
         };
-        instances.get(remoteId)!.invokeListener("connection", connection);
-        return connection;
     });
 }
 

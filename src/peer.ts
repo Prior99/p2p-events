@@ -44,13 +44,14 @@ export interface PeerOpenResult {
 }
 
 export abstract class Peer<TUser extends User, TEventIds = string> {
+    public users = new Users<TUser>();
+    public userId = uuid();
+    public readonly options: Required<PeerOptions<TUser>>;
+
     protected peer?: PeerJS;
-    protected users = new Users<TUser>();
-    protected userId = uuid();
     protected events = new Map<string, EventMeta<any>>(); // eslint-disable-line
     protected pendingEvents = new Map<string, PendingEventManager<any>>(); // eslint-disable-line
     protected ignoredSerialIds = new Set<string>();
-    protected readonly options: Required<PeerOptions<TUser>>;
     protected sequenceNumber = 0;
 
     constructor(inputOptions: PeerOptions<TUser>) {
