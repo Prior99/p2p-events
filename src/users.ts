@@ -1,0 +1,88 @@
+export interface User {
+    id: string;
+}
+
+export interface PingInfo {
+    lastPingDate: number;
+    roundTripTime: number | undefined;
+    lostPingMessages: number;
+}
+
+export interface UserInfo<TUser extends User> extends PingInfo {
+    user: TUser;
+}
+
+export class Users<TUser extends User> {
+    private users = new Map<string, UserInfo<TUser>>();
+
+    public addUser(user: TUser) {
+        this.users.set(user.id, {
+            user,
+            lastPingDate: Date.now(),
+            roundTripTime: undefined,
+            lostPingMessages: 0,
+        });
+    }
+
+    public removeUser(userId: string) {
+        this.users.delete(userId);
+    }
+
+    public getUser(userId: string): TUser | undefined {
+        return this.users.get(userId)?.user;
+    }
+
+    public getRoundTripTime(userId: string): number | undefined {
+        return this.users.get(userId)?.roundTripTime;
+    }
+
+    public getLastPing(userId: string): Date | undefined {
+        const user = this.users.get(userId);
+        return user ? new Date(user.lastPingDate) : undefined;
+    }
+
+    public updateUser(userId: string, update: Partial<TUser>): void {
+        const userInfo = this.users.get(userId);
+        if (!userInfo) {
+            throw new Error(`No user with id "${userId}".`);
+        }
+        this.users.set(userId, {
+            ...userInfo,
+            user: {
+                ...userInfo.user,
+                ...update,
+            },
+        });
+    }
+
+    public updatePingInfo(userId: string, update: Partial<PingInfo>): void {
+        const userInfo = this.users.get(userId);
+        if (!userInfo) {
+            throw new Error(`No user with id "${userId}".`);
+        }
+        this.users.set(userId, {
+            ...userInfo,
+            ...update,
+            lostPingMessages: userInfo.lostPingMessages + (update.lostPingMessages ?? 0),
+        });
+    }
+
+    public initialize(users: UserInfo<TUser>[]): void {
+        for (const { user, lastPingDate, roundTripTime } of users) {
+            this.addUser(user);
+            this.updatePingInfo(user.id, { lastPingDate, roundTripTime });
+        }
+    }
+
+    public get allUsers(): TUser[] {
+        return Array.from(this.users.values()).map(({ user }) => user);
+    }
+
+    public get all(): UserInfo<TUser>[] {
+        return Array.from(this.users.values());
+    }
+
+    public get count(): number {
+        return this.users.size;
+    }
+}
