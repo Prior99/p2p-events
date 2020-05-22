@@ -75,11 +75,11 @@ export class Users<TUser extends User> {
     }
 
     public get allUsers(): TUser[] {
-        return Array.from(this.users.values()).map(({ user }) => user);
+        return this.all.map(({ user }) => user);
     }
 
     public get all(): UserInfo<TUser>[] {
-        return Array.from(this.users.values());
+        return Array.from(this.users.values()).sort((a, b) => a.user.id.localeCompare(b.user.id));
     }
 
     public get count(): number {

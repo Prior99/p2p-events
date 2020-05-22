@@ -43,7 +43,7 @@ export interface PeerOpenResult {
     userId: string;
 }
 
-export abstract class Peer<TUser extends User, TEventIds = string> {
+export abstract class Peer<TUser extends User, TEventId> {
     public users = new Users<TUser>();
     public userId = uuid();
     public readonly options: Required<PeerOptions<TUser>>;
@@ -69,8 +69,8 @@ export abstract class Peer<TUser extends User, TEventIds = string> {
         return this.users.getUser(this.userId)!;
     }
 
-    public event<TPayload, TEventId extends TEventIds>(eventId?: TEventId): EventManager<TPayload> {
-        const eventIdString = String(eventId ?? uuid());
+    public event<TPayload>(eventId: TEventId): EventManager<TPayload> {
+        const eventIdString = String(eventId);
         const eventMeta: EventMeta<TPayload> = {
             eventId: eventIdString,
             subscriptions: new Set(),
@@ -95,7 +95,7 @@ export abstract class Peer<TUser extends User, TEventIds = string> {
                         rejectPromiseListeners(Array.from(pendingEventManager.waitForAllListeners.values()), error);
                         this.ignoreSerialId(event.eventId);
                         this.pendingEvents.delete(event.serialId);
-                    }, this.options.timeout),
+                    }, this.options.timeout * 1000),
                 };
                 this.pendingEvents.set(event.serialId, pendingEventManager);
                 return {
@@ -137,10 +137,6 @@ export abstract class Peer<TUser extends User, TEventIds = string> {
                 });
                 break;
             case HostMessageType.RELAYED_EVENT:
-                this.sendClientMessage({
-                    messageType: ClientMessageType.ACKNOWLEDGE,
-                    serialId: message.event.serialId,
-                });
                 this.receivedEvent(message.event);
                 break;
             case HostMessageType.ACKNOWLEDGED_BY_HOST:

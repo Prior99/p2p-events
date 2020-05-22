@@ -20,9 +20,17 @@ export interface HostOpenResult extends PeerOpenResult {
     networkId: string;
 }
 
-export class Host<TUser extends User, TEventIds = string> extends Peer<TUser, TEventIds> {
+export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> {
     protected connections = new Map<string, PeerJS.DataConnection>();
-    protected connectionMetas = new Map<string, ConnectionMeta>();
+    protected connectionMetas = new Map<string, ConnectionMeta>([
+        [
+            this.userId,
+            {
+                userId: this.userId,
+                lastSequenceNumber: 0,
+            },
+        ],
+    ]);
     protected relayedEvents = new Map<string, RelayedEventManager<any>>(); // eslint-disable-line
 
     protected sendHostMessage<TPayload>(message: HostMessage<TUser, TPayload>): void {
@@ -33,6 +41,10 @@ export class Host<TUser extends User, TEventIds = string> extends Peer<TUser, TE
     }
 
     protected sendToUser<TPayload>(userId: string, message: HostMessage<TUser, TPayload>): void {
+        if (userId === this.userId) {
+            this.handleHostMessage(message);
+            return;
+        }
         const connection = this.connections.get(userId);
         if (!connection) {
             throw new Error(`Can't send message to unknown user with id "${userId}".`);
@@ -64,13 +76,13 @@ export class Host<TUser extends User, TEventIds = string> extends Peer<TUser, TE
                 const { event } = message;
                 const { serialId } = event;
                 this.relayedEvents.set(event.serialId, { event, acknowledgedBy: new Set() });
-                this.sendHostMessage({
-                    messageType: HostMessageType.RELAYED_EVENT,
-                    event,
-                });
                 this.sendToUser(userId, {
                     messageType: HostMessageType.ACKNOWLEDGED_BY_HOST,
                     serialId,
+                });
+                this.sendHostMessage({
+                    messageType: HostMessageType.RELAYED_EVENT,
+                    event,
                 });
                 break;
             }
@@ -89,7 +101,7 @@ export class Host<TUser extends User, TEventIds = string> extends Peer<TUser, TE
                 }
                 relayedEvent.acknowledgedBy.add(userId);
                 if (relayedEvent.acknowledgedBy.size === this.users.count) {
-                    this.sendHostMessage({
+                    this.sendToUser(relayedEvent.event.originUserId, {
                         messageType: HostMessageType.ACKNOWLEDGED_BY_ALL,
                         serialId,
                     });

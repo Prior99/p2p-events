@@ -8,7 +8,7 @@ export interface ClientOpenResult extends PeerOpenResult {
     remotePeerId: string;
 }
 
-export class Client<TUser extends User, TEventIds = string> extends Peer<TUser, TEventIds> {
+export class Client<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> {
     private connection?: PeerJS.DataConnection;
 
     protected sendClientMessage<TPayload>(message: ClientMessage<TUser, TPayload>): void {
