@@ -20,7 +20,7 @@ export class MockPeerJS {
     public destroy = jest.fn();
 
     public on = jest.fn((eventName, handler) => {
-        this.listeners.push(eventName, handler);
+        this.listeners.push({ eventName, handler });
     });
 
     private invokeListener(eventName: string, ...args: any[]): void {
@@ -31,7 +31,7 @@ export class MockPeerJS {
 
     public connect = jest.fn((remoteId) => {
         connections.get(remoteId)!.push(this.id);
-        instances.get(remoteId)!.invokeListener("connection", {
+        const connection = {
             on: jest.fn((eventName: string, handler: Function) => {
                 openConnections.push({
                     from: this.id,
@@ -44,7 +44,9 @@ export class MockPeerJS {
                     .filter(({ from, to }) => from === this.id && to === remoteId)
                     .forEach(({ handler }) => handler(data));
             }),
-        });
+        };
+        instances.get(remoteId)!.invokeListener("connection", connection);
+        return connection;
     });
 }
 

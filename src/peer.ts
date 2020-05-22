@@ -51,6 +51,7 @@ export abstract class Peer<TUser extends User, TEventIds = string> {
     protected pendingEvents = new Map<string, PendingEventManager<any>>(); // eslint-disable-line
     protected ignoredSerialIds = new Set<string>();
     protected readonly options: Required<PeerOptions<TUser>>;
+    protected sequenceNumber = 0;
 
     constructor(inputOptions: PeerOptions<TUser>) {
         this.users.addUser({
@@ -131,7 +132,7 @@ export abstract class Peer<TUser extends User, TEventIds = string> {
                 this.sendClientMessage({
                     messageType: ClientMessageType.PONG,
                     initiationDate: message.initiationDate,
-                    sequenceNumber: message.sequenceNumber,
+                    sequenceNumber: this.sequenceNumber++,
                 });
                 break;
             case HostMessageType.RELAYED_EVENT:
@@ -154,6 +155,9 @@ export abstract class Peer<TUser extends User, TEventIds = string> {
                 break;
             case HostMessageType.UPDATE_USER:
                 this.users.updateUser(message.user.id, message.user);
+                break;
+            case HostMessageType.INCOMPATIBLE:
+                throw new Error("Incompatible with host.");
                 break;
             default:
                 unreachable(message);
