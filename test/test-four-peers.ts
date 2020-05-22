@@ -1,5 +1,5 @@
 jest.mock("peerjs");
-import { Host, Client, ClientMessageType, HostMessageType, EventManager, SendEventManager } from "../src";
+import { Host, Client, ClientMessageType, HostMessageType, EventManager, SendEventManager, Users } from "../src";
 import { resetHistory, getHistory } from "./message-history";
 import { libraryVersion } from "../generated/version";
 
@@ -380,6 +380,151 @@ describe("Four peers", () => {
                         data: {
                             messageType: HostMessageType.ACKNOWLEDGED_BY_ALL,
                             serialId: sendResult.event.serialId,
+                        },
+                    },
+                ]);
+            });
+        });
+    });
+
+    describe("ping", () => {
+        let spyDate: jest.SpiedFunction<any>;
+        const now = 1590160273660;
+
+        beforeEach(() => {
+            resetHistory();
+            spyDate = jest.spyOn(Date, "now").mockImplementation(() => now);
+            host.ping();
+        });
+
+        afterEach(() => spyDate.mockRestore());
+
+        it("has sent the expected messages", () => {
+            expect(getHistory()).toEqual([
+                {
+                    from: hostPeerId,
+                    to: clientPeerIds[0],
+                    data: {
+                        messageType: HostMessageType.PING,
+                        initiationDate: now,
+                    },
+                },
+                {
+                    from: clientPeerIds[0],
+                    to: hostPeerId,
+                    data: {
+                        messageType: ClientMessageType.PONG,
+                        initiationDate: now,
+                        sequenceNumber: 1,
+                    },
+                },
+                {
+                    from: hostPeerId,
+                    to: clientPeerIds[1],
+                    data: {
+                        messageType: HostMessageType.PING,
+                        initiationDate: now,
+                    },
+                },
+                {
+                    from: clientPeerIds[1],
+                    to: hostPeerId,
+                    data: {
+                        messageType: ClientMessageType.PONG,
+                        initiationDate: now,
+                        sequenceNumber: 1,
+                    },
+                },
+                {
+                    from: hostPeerId,
+                    to: clientPeerIds[2],
+                    data: {
+                        messageType: HostMessageType.PING,
+                        initiationDate: now,
+                    },
+                },
+                {
+                    from: clientPeerIds[2],
+                    to: hostPeerId,
+                    data: {
+                        messageType: ClientMessageType.PONG,
+                        initiationDate: now,
+                        sequenceNumber: 1,
+                    },
+                },
+            ]);
+        });
+
+        describe("after publishing the ping info", () => {
+            let pingInfos: any[];
+            beforeEach(() => {
+                resetHistory();
+                host.informPing();
+                pingInfos = [
+                    {
+                        userId: host.userId,
+                        lastPingDate: now,
+                        roundTripTime: 0,
+                        lostPingMessages: 0,
+                    },
+                    {
+                        userId: clients[0].userId,
+                        lastPingDate: now,
+                        roundTripTime: 0,
+                        lostPingMessages: 0,
+                    },
+                    {
+                        userId: clients[1].userId,
+                        lastPingDate: now,
+                        roundTripTime: 0,
+                        lostPingMessages: 0,
+                    },
+                    {
+                        userId: clients[2].userId,
+                        lastPingDate: now,
+                        roundTripTime: 0,
+                        lostPingMessages: 0,
+                    },
+                ].sort((a, b) => a.userId.localeCompare(b.userId));
+            });
+
+            it("has the ping infos available in all peers", () => {
+                [host, ...clients].forEach((peer) =>
+                    expect(
+                        peer.users.all.map(({ lastPingDate, lostPingMessages, roundTripTime, user }) => ({
+                            lastPingDate,
+                            lostPingMessages,
+                            roundTripTime,
+                            userId: user.id,
+                        })),
+                    ).toEqual(pingInfos),
+                );
+            });
+
+            it("has sent the expected messages", () => {
+                expect(getHistory()).toEqual([
+                    {
+                        from: hostPeerId,
+                        to: clientPeerIds[0],
+                        data: {
+                            messageType: HostMessageType.PING_INFO,
+                            pingInfos,
+                        },
+                    },
+                    {
+                        from: hostPeerId,
+                        to: clientPeerIds[1],
+                        data: {
+                            messageType: HostMessageType.PING_INFO,
+                            pingInfos,
+                        },
+                    },
+                    {
+                        from: hostPeerId,
+                        to: clientPeerIds[2],
+                        data: {
+                            messageType: HostMessageType.PING_INFO,
+                            pingInfos,
                         },
                     },
                 ]);

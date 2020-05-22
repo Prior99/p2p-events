@@ -6,12 +6,12 @@ const instances = new Map<string, MockPeerJS>();
 const openConnections: {
     from: string;
     to: string;
-    handler: Function;
+    handler: (...args: any[]) => any;
 }[] = [];
 
 export class MockPeerJS {
     public id = uuid();
-    private listeners: { eventName: string; handler: Function }[] = [];
+    private listeners: { eventName: string; handler: (...args: any[]) => any }[] = [];
 
     constructor() {
         connections.set(this.id, []);
@@ -34,7 +34,7 @@ export class MockPeerJS {
     public connect = jest.fn((remoteId) => {
         connections.get(remoteId)!.push(this.id);
         instances.get(remoteId)!.invokeListener("connection", {
-            on: jest.fn((eventName: string, handler: Function) => {
+            on: jest.fn((eventName: string, handler: (...args: any[]) => any) => {
                 if (eventName === "open") {
                     handler();
                     return;
@@ -57,7 +57,7 @@ export class MockPeerJS {
             }),
         });
         return {
-            on: jest.fn((eventName: string, handler: Function) => {
+            on: jest.fn((eventName: string, handler: (...args: any[]) => any) => {
                 if (eventName === "open") {
                     handler();
                     return;

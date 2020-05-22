@@ -1,6 +1,6 @@
 import PeerJS from "peerjs";
 import { User } from "./users";
-import { Peer, PeerOpenResult, PeerOptions } from "./peer";
+import { Peer, PeerOpenResult } from "./peer";
 import { ClientMessage, ClientMessageType } from "./messages";
 import { libraryVersion } from "../generated/version";
 

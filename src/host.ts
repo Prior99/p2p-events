@@ -1,6 +1,6 @@
 import PeerJS from "peerjs";
 import { HostMessage, ClientMessage, ClientMessageType, HostMessageType } from "./messages";
-import { Peer, PeerOpenResult, PeerOptions } from "./peer";
+import { Peer, PeerOpenResult, PeerOptions, peerDefaultOptions } from "./peer";
 import { User } from "./users";
 import { unreachable } from "./unreachable";
 import { P2PEvent } from "./p2p-event";
@@ -20,7 +20,13 @@ export interface HostOpenResult extends PeerOpenResult {
     networkId: string;
 }
 
+export interface HostOptions<TUser extends User> extends PeerOptions<TUser> {
+    pingInterval?: number;
+}
+
 export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> {
+    public readonly options: Required<HostOptions<TUser>>;
+
     protected connections = new Map<string, PeerJS.DataConnection>();
     protected connectionMetas = new Map<string, ConnectionMeta>([
         [
@@ -32,6 +38,34 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
         ],
     ]);
     protected relayedEvents = new Map<string, RelayedEventManager<any>>(); // eslint-disable-line
+
+    constructor(inputOptions: HostOptions<TUser>) {
+        super(inputOptions);
+        this.options = {
+            ...peerDefaultOptions,
+            pingInterval: 0,
+            ...inputOptions,
+        };
+    }
+
+    public ping(): void {
+        this.sendHostMessage({
+            messageType: HostMessageType.PING,
+            initiationDate: Date.now(),
+        });
+    }
+
+    public informPing(): void {
+        this.sendHostMessage({
+            messageType: HostMessageType.PING_INFO,
+            pingInfos: this.users.all.map(({ lastPingDate, lostPingMessages, roundTripTime, user }) => ({
+                lastPingDate,
+                lostPingMessages,
+                roundTripTime,
+                userId: user.id,
+            })),
+        });
+    }
 
     protected sendHostMessage<TPayload>(message: HostMessage<TUser, TPayload>): void {
         for (const connection of this.connections.values()) {
@@ -70,6 +104,7 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
                 this.users.updatePingInfo(userId, {
                     lostPingMessages: message.sequenceNumber - connectionMeta.lastSequenceNumber - 1,
                     roundTripTime: Date.now() - message.initiationDate,
+                    lastPingDate: Date.now(),
                 });
                 break;
             case ClientMessageType.EVENT: {
@@ -166,6 +201,12 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
             throw new Error("PeerJS failed to initialize.");
         }
         this.peer.on("connection", (connection) => this.handleConnect(connection));
+        if (this.options.pingInterval > 0) {
+            setInterval(() => {
+                this.ping();
+                this.informPing();
+            }, this.options.pingInterval);
+        }
         return openResult;
     }
 }

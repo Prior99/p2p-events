@@ -43,6 +43,10 @@ export interface PeerOpenResult {
     userId: string;
 }
 
+export const peerDefaultOptions = {
+    timeout: 5,
+};
+
 export abstract class Peer<TUser extends User, TEventId> {
     public users = new Users<TUser>();
     public userId = uuid();
@@ -60,7 +64,7 @@ export abstract class Peer<TUser extends User, TEventId> {
             id: this.userId,
         } as any); // eslint-disable-line
         this.options = {
-            timeout: 5,
+            ...peerDefaultOptions,
             ...inputOptions,
         };
     }
@@ -133,7 +137,7 @@ export abstract class Peer<TUser extends User, TEventId> {
                 this.sendClientMessage({
                     messageType: ClientMessageType.PONG,
                     initiationDate: message.initiationDate,
-                    sequenceNumber: this.sequenceNumber++,
+                    sequenceNumber: ++this.sequenceNumber,
                 });
                 break;
             case HostMessageType.RELAYED_EVENT:
@@ -250,7 +254,7 @@ export abstract class Peer<TUser extends User, TEventId> {
         return event;
     }
 
-    public ignoreSerialId(serialId: string) {
+    public ignoreSerialId(serialId: string): void {
         this.ignoredSerialIds.add(serialId);
     }
 }

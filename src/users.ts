@@ -15,7 +15,7 @@ export interface UserInfo<TUser extends User> extends PingInfo {
 export class Users<TUser extends User> {
     private users = new Map<string, UserInfo<TUser>>();
 
-    public addUser(user: TUser) {
+    public addUser(user: TUser): void {
         this.users.set(user.id, {
             user,
             lastPingDate: Date.now(),
@@ -24,7 +24,7 @@ export class Users<TUser extends User> {
         });
     }
 
-    public removeUser(userId: string) {
+    public removeUser(userId: string): void {
         this.users.delete(userId);
     }
 

@@ -4,11 +4,12 @@
         "module": "ES6",
         "moduleResolution": "Node",
         "experimentalDecorators": true,
-        "emitDecoratorMetadata": true,
-        "jsx": "react",
-        "esModuleInterop": true,
         "strict": true,
-        "sourceMap": true
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "sourceMap": true,
+        "outDir": "./dist",
+        "declaration": true,
     },
     "include": ["./src", "./generated"]
 }
