@@ -36,6 +36,7 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
     protected sendClientPacketToHost<TPayload>(packet: ClientPacket<TMessageType, TUser, TPayload>): void {
         if (!this.connection) {
             this.throwError(new Error("Can't send message: Connection is not open."));
+            return;
         }
         this.sendHostPacketToPeer(this.connection, packet);
     }

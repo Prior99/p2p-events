@@ -97,6 +97,10 @@ export interface SentMessageState<TMessageType extends string | number, TPayload
      */
     message: Message<TMessageType, TPayload>;
     /**
+     * `true` if the host has already acknowledged this message.
+     */
+    hostHasAcknowledged: boolean;
+    /**
      * Listeners that need to be invoked once the host has acknowledged the message.
      */
     waitForHostListeners: Set<PromiseListener<[void], [Error]>>;
@@ -420,14 +424,18 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                     message,
                     waitForHostListeners: new Set(),
                     waitForAllListeners: new Set(),
+                    hostHasAcknowledged: false,
                     timeout: setTimeout(() => {
                         const error = new NetworkError(
                             `Timeout: No acknowledge for message "${message.messageType}" with serial "${message.serialId}" within ${this.options.timeout} seconds.`,
                         );
-                        rejectPromiseListeners(Array.from(sentMessageState.waitForHostListeners.values()), error);
+                        if (!sentMessageState?.hostHasAcknowledged) {
+                            rejectPromiseListeners(Array.from(sentMessageState.waitForHostListeners.values()), error);
+                        }
                         rejectPromiseListeners(Array.from(sentMessageState.waitForAllListeners.values()), error);
                         this.ignoreSerialId(message.serialId);
                         this.sentMessageStates.delete(message.serialId);
+                        this.throwError(error);
                     }, this.options.timeout * 1000),
                 };
                 this.sentMessageStates.set(message.serialId, sentMessageState);
@@ -450,11 +458,10 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
     }
 
     /**
-     * Used to throw an error by emitting it as an event and then throwing it and hence terminating
-     * execution.
+     * Used to throw an error by emitting it as an event.
      * @param error The error to throw and emit.
      */
-    protected throwError(error: Error): never {
+    protected throwError(error: Error): void {
         const errorReason =
             error instanceof InternalError
                 ? ErrorReason.INTERNAL
@@ -464,7 +471,6 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 ? ErrorReason.INCOMPATIBLE
                 : ErrorReason.OTHER;
         this.emitEvent("error", error, errorReason);
-        throw error;
     }
 
     /**
@@ -510,8 +516,10 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                     serialId: message.serialId,
                 });
                 const messageFactoryState = this.messageFactoryStates.get(message.messageType);
+                /* istanbul ignore if */
                 if (!messageFactoryState) {
                     this.throwError(new InternalError(`Received unknown message of type "${message.messageType}".`));
+                    return;
                 }
                 const createdDate = new Date(message.createdDate);
                 this.emitEvent("message", message, message.originUserId, createdDate);
@@ -526,9 +534,12 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                     return;
                 }
                 const sentMessageState = this.sentMessageStates.get(serialId);
+                /* istanbul ignore if */
                 if (!sentMessageState) {
                     this.throwError(new InternalError(`No sent message with serial id "${serialId}".`));
+                    return;
                 }
+                sentMessageState.hostHasAcknowledged = true;
                 resolvePromiseListeners(Array.from(sentMessageState.waitForHostListeners.values()));
                 break;
             }
@@ -538,8 +549,10 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                     return;
                 }
                 const sentMessageState = this.sentMessageStates.get(serialId);
+                /* istanbul ignore if */
                 if (!sentMessageState) {
                     this.throwError(new InternalError(`No sent message with serial id "${serialId}".`));
+                    return;
                 }
                 resolvePromiseListeners(Array.from(sentMessageState.waitForAllListeners.values()));
                 clearTimeout(sentMessageState.timeout);
@@ -553,6 +566,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                         this.userManager.updatePingInfo(userId, pingInfo);
                     } catch (err) {
                         this.throwError(err);
+                        return;
                     }
                     map.set(userId, pingInfo);
                 }
@@ -564,6 +578,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                     this.userManager.updateUser(packet.user.id, packet.user);
                 } catch (err) {
                     this.throwError(err);
+                    return;
                 }
                 this.emitEvent("userupdate", this.userManager.getUser(packet.user.id)!);
                 break;
@@ -590,7 +605,8 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      */
     public close(): void {
         if (!this.peer) {
-            this.throwError(new InternalError("Can't close peer. Not connected."));
+            this.throwError(new Error("Can't close peer. Not connected."));
+            return;
         }
         this.sendClientPacketToHost({
             packetType: ClientPacketType.DISCONNECT,
@@ -610,7 +626,9 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
             this.peer.on("open", () => resolve());
         });
         if (!this.peer) {
-            this.throwError(new InternalError("Connection id could not be determined."));
+            const error = new NetworkError("Connection id could not be determined.");
+            this.throwError(error);
+            throw error;
         }
         this.networkMode = NetworkMode.CLIENT;
         return {
@@ -620,7 +638,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
     }
 
     /**
-     * Send an individual host packet to a specific peer. 
+     * Send an individual host packet to a specific peer.
      * @param connection The peer's connection to send the packet to.
      * @param packet The packet to send.
      */

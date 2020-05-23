@@ -138,6 +138,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         const connection = this.connections.get(userId);
         if (!connection) {
             this.throwError(new InternalError(`Can't send message to unknown user with id "${userId}".`));
+            return;
         }
         const { dataConnection } = connection;
         if (!dataConnection) {
@@ -157,6 +158,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         const connection = this.connections.get(userId);
         if (!connection) {
             this.throwError(new InternalError(`Connection meta for user "${userId}" missing.`));
+            return;
         }
         switch (packet.packetType) {
             case ClientPacketType.HELLO:
@@ -207,11 +209,13 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                             `User "${userId}" acknowledged message with unknown serial id "${serialId}".`,
                         ),
                     );
+                    return;
                 }
                 if (relayedMessageState.acknowledgedBy.has(userId)) {
                     this.throwError(
                         new InternalError(`User "${userId}" acknowledged message with serial id "${serialId}" twice.`),
                     );
+                    return;
                 }
                 relayedMessageState.acknowledgedBy.add(userId);
                 if (
@@ -229,6 +233,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
             case ClientPacketType.UPDATE_USER:
                 if ("id" in packet.user) {
                     this.throwError(new InternalError(`User "${userId}" can't update user id.`));
+                    return;
                 }
                 this.sendHostPacketToAll({
                     packetType: HostPacketType.UPDATE_USER,
@@ -300,7 +305,9 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         this.networkMode = NetworkMode.CONNECTING;
         const openResult = await super.createLocalPeer();
         if (!this.peer) {
-            this.throwError(new NetworkError("PeerJS failed to initialize."));
+            const error = new NetworkError("PeerJS failed to initialize.");
+            this.throwError(error);
+            throw error;
         }
         this.peer.on("connection", (connection) => this.handleConnect(connection));
         if (this.options.pingInterval !== undefined) {
