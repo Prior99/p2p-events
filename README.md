@@ -1,15 +1,15 @@
-# p2p-network
+# p2p-networking
 
-[![pipeline status](https://gitlab.com/prior99/p2p-network/badges/master/pipeline.svg)](https://github.com/Prior99/p2p-network)
-[![coverage report](https://gitlab.com/prior99/p2p-network/badges/master/coverage.svg)](https://github.com/Prior99/p2p-network)
+[![pipeline status](https://gitlab.com/prior99/p2p-networking/badges/master/pipeline.svg)](https://github.com/Prior99/p2p-networking)
+[![coverage report](https://gitlab.com/prior99/p2p-networking/badges/master/coverage.svg)](https://github.com/Prior99/p2p-networking)
 
 A simple message-oriented [WebRTC](https://webrtc.org/) ([PeerJS](https://peerjs.com/)) based p2p network.
 
 ## Resources
 
 - [Example code](./example/src)
-- [Api Reference](https://prior99.gitlab.io/p2p-network/index.html)
-- [Example](https://prior99.gitlab.io/p2p-network/example/index.html)
+- [Api Reference](https://prior99.gitlab.io/p2p-networking/index.html)
+- [Example](https://prior99.gitlab.io/p2p-networking/example/index.html)
 
 ## Example
 

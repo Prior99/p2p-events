@@ -1,7 +1,7 @@
 import * as React from "react";
 import { observer } from "mobx-react";
 import { TodoUser, Todo } from "./types";
-import { PingInfo } from "p2p-network";
+import { PingInfo } from "p2p-networking";
 import { CreateTodoForm } from "./create-todo-form";
 import { CollaborationLink } from "./collaboration-link";
 import { TodoList } from "./todo-list";

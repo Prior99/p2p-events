@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { Peer, PingInfo, createClient, createHost } from "p2p-network";
+import { Peer, PingInfo, createClient, createHost } from "p2p-networking";
 import { Messages, TodoUser, AddTodo, CheckTodo, DeleteTodo, Todo, CurrentState } from "./types";
 import { App } from "./app";
 import { observable } from "mobx";

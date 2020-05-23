@@ -1,5 +1,5 @@
 {
-    "name": "p2p-network",
+    "name": "p2p-networking",
     "version": "0.1.0",
     "main": "dist/src/index.js",
     "license": "MIT",

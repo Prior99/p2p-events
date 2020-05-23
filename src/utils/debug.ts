@@ -1,3 +1,3 @@
 import { debug as debugFactory } from "debug";
 
-export const debug = debugFactory("p2p-network");
+export const debug = debugFactory("p2p-networking");

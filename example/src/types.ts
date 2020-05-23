@@ -1,4 +1,4 @@
-import { User } from "p2p-network";
+import { User } from "p2p-networking";
 
 export interface Todo {
     id: number;
