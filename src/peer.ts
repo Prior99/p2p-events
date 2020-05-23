@@ -296,7 +296,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
 
     protected async createLocalPeer(): Promise<PeerOpenResult> {
         await new Promise((resolve) => {
-            this.peer = new PeerJS(null as any, { host: "localhost", port: 9000, path: "/myapp" }); // eslint-disable-line
+            this.peer = new PeerJS(null as any); // eslint-disable-line
             this.peer.on("open", () => resolve());
         });
         if (!this.peer) {

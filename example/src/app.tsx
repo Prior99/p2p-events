@@ -12,10 +12,10 @@ export interface AppProps {
 }
 
 export function App({ peer }: AppProps): JSX.Element {
-    const addTodo = peer.event<AddTodo>(Messages.ADD_TODO);
-    const checkTodo = peer.event<CheckTodo>(Messages.CHECK_TODO);
-    const deleteTodo = peer.event<DeleteTodo>(Messages.DELETE_TODO);
-    const [collaborators, setCollaborators] = React.useState(peer.users.allUsers);
+    const addTodo = peer.message<AddTodo>(Messages.ADD_TODO);
+    const checkTodo = peer.message<CheckTodo>(Messages.CHECK_TODO);
+    const deleteTodo = peer.message<DeleteTodo>(Messages.DELETE_TODO);
+    const [collaborators, setCollaborators] = React.useState(peer.users);
     const [pingInfo, setPingInfo] = React.useState<Map<string, PingInfo>>(new Map());
 
     const [todos, setTodos] = React.useState<Todo[]>([]);
@@ -28,15 +28,15 @@ export function App({ peer }: AppProps): JSX.Element {
         ),
     );
     deleteTodo.subscribe(({ id }) => setTodos(todos.filter((todo) => todo.id !== id)));
-    peer.on("userconnect", () => setCollaborators(peer.users.allUsers));
-    peer.on("userdisconnect", () => setCollaborators(peer.users.allUsers));
-    peer.on("userupdate", () => setCollaborators(peer.users.allUsers));
+    peer.on("userconnect", () => setCollaborators(peer.users));
+    peer.on("userdisconnect", () => setCollaborators(peer.users));
+    peer.on("userupdate", () => setCollaborators(peer.users));
     peer.on("pinginfo", (pingInfo) => setPingInfo(pingInfo));
 
     return (
         <div>
             <p>
-                Click here to invite collaborators: <CollaborationLink peerId={peer.hostPeerId} />.
+                Click here to invite collaborators: <CollaborationLink peerId={peer.hostConnectionId} />.
             </p>
             <TodoList
                 todos={todos}
