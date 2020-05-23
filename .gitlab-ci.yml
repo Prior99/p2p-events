@@ -39,8 +39,6 @@ test:
   stage: build
   script:
     - yarn test
-  dependencies:
-    - build
   artifacts:
     paths:
       - coverage/
