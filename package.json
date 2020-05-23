@@ -17,7 +17,7 @@
     "eslintConfig": {
         "extends": "./eslint-defaults.json"
     },
-    "typings": "dist/index.d.ts",
+    "typings": "dist/src/index.d.ts",
     "files": [
         "dist",
         "src",
