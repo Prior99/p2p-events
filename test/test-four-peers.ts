@@ -45,7 +45,7 @@ describe("Four peers", () => {
                 from: clientPeerIds[0],
                 to: hostPeerId,
                 data: {
-                    messageType: ClientPacketType.HELLO,
+                    packetType: ClientPacketType.HELLO,
                     applicationProtocolVersion: "1.0.0",
                     protocolVersion: libraryVersion,
                     user: clients[0].ownUser,
@@ -55,7 +55,7 @@ describe("Four peers", () => {
                 from: hostPeerId,
                 to: clientPeerIds[0],
                 data: {
-                    messageType: HostPacketType.WELCOME,
+                    packetType: HostPacketType.WELCOME,
                     users: [
                         {
                             lastPingDate: expect.any(Number),
@@ -70,7 +70,7 @@ describe("Four peers", () => {
                 from: hostPeerId,
                 to: clientPeerIds[0],
                 data: {
-                    messageType: HostPacketType.USER_CONNECTED,
+                    packetType: HostPacketType.USER_CONNECTED,
                     user: clients[0].ownUser,
                 },
             },
@@ -78,7 +78,7 @@ describe("Four peers", () => {
                 from: clientPeerIds[1],
                 to: hostPeerId,
                 data: {
-                    messageType: ClientPacketType.HELLO,
+                    packetType: ClientPacketType.HELLO,
                     applicationProtocolVersion: "1.0.0",
                     protocolVersion: libraryVersion,
                     user: clients[1].ownUser,
@@ -88,7 +88,7 @@ describe("Four peers", () => {
                 from: hostPeerId,
                 to: clientPeerIds[1],
                 data: {
-                    messageType: HostPacketType.WELCOME,
+                    packetType: HostPacketType.WELCOME,
                     users: [
                         {
                             lastPingDate: expect.any(Number),
@@ -109,7 +109,7 @@ describe("Four peers", () => {
                 from: hostPeerId,
                 to: clientPeerIds[0],
                 data: {
-                    messageType: HostPacketType.USER_CONNECTED,
+                    packetType: HostPacketType.USER_CONNECTED,
                     user: clients[1].ownUser,
                 },
             },
@@ -117,7 +117,7 @@ describe("Four peers", () => {
                 from: hostPeerId,
                 to: clientPeerIds[1],
                 data: {
-                    messageType: HostPacketType.USER_CONNECTED,
+                    packetType: HostPacketType.USER_CONNECTED,
                     user: clients[1].ownUser,
                 },
             },
@@ -125,7 +125,7 @@ describe("Four peers", () => {
                 from: clientPeerIds[2],
                 to: hostPeerId,
                 data: {
-                    messageType: ClientPacketType.HELLO,
+                    packetType: ClientPacketType.HELLO,
                     applicationProtocolVersion: "1.0.0",
                     protocolVersion: libraryVersion,
                     user: clients[2].ownUser,
@@ -135,7 +135,7 @@ describe("Four peers", () => {
                 from: hostPeerId,
                 to: clientPeerIds[2],
                 data: {
-                    messageType: HostPacketType.WELCOME,
+                    packetType: HostPacketType.WELCOME,
                     users: [
                         {
                             lastPingDate: expect.any(Number),
@@ -162,7 +162,7 @@ describe("Four peers", () => {
                 from: hostPeerId,
                 to: clientPeerIds[0],
                 data: {
-                    messageType: HostPacketType.USER_CONNECTED,
+                    packetType: HostPacketType.USER_CONNECTED,
                     user: clients[2].ownUser,
                 },
             },
@@ -170,7 +170,7 @@ describe("Four peers", () => {
                 from: hostPeerId,
                 to: clientPeerIds[1],
                 data: {
-                    messageType: HostPacketType.USER_CONNECTED,
+                    packetType: HostPacketType.USER_CONNECTED,
                     user: clients[2].ownUser,
                 },
             },
@@ -178,7 +178,7 @@ describe("Four peers", () => {
                 from: hostPeerId,
                 to: clientPeerIds[2],
                 data: {
-                    messageType: HostPacketType.USER_CONNECTED,
+                    packetType: HostPacketType.USER_CONNECTED,
                     user: clients[2].ownUser,
                 },
             },
@@ -282,7 +282,7 @@ describe("Four peers", () => {
                         from: clientPeerIds[0],
                         to: hostPeerId,
                         data: {
-                            messageType: ClientPacketType.EVENT,
+                            packetType: ClientPacketType.EVENT,
                             event: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
@@ -298,7 +298,7 @@ describe("Four peers", () => {
                         from: hostPeerId,
                         to: clientPeerIds[0],
                         data: {
-                            messageType: HostPacketType.ACKNOWLEDGED_BY_HOST,
+                            packetType: HostPacketType.ACKNOWLEDGED_BY_HOST,
                             serialId: sendResult.event.serialId,
                         },
                     },
@@ -306,7 +306,7 @@ describe("Four peers", () => {
                         from: hostPeerId,
                         to: clientPeerIds[0],
                         data: {
-                            messageType: HostPacketType.RELAYED_EVENT,
+                            packetType: HostPacketType.RELAYED_EVENT,
                             event: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
@@ -322,7 +322,7 @@ describe("Four peers", () => {
                         from: clientPeerIds[0],
                         to: hostPeerId,
                         data: {
-                            messageType: ClientPacketType.ACKNOWLEDGE,
+                            packetType: ClientPacketType.ACKNOWLEDGE,
                             serialId: sendResult.event.serialId,
                         },
                     },
@@ -330,7 +330,7 @@ describe("Four peers", () => {
                         from: hostPeerId,
                         to: clientPeerIds[1],
                         data: {
-                            messageType: HostPacketType.RELAYED_EVENT,
+                            packetType: HostPacketType.RELAYED_EVENT,
                             event: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
@@ -346,7 +346,7 @@ describe("Four peers", () => {
                         from: clientPeerIds[1],
                         to: hostPeerId,
                         data: {
-                            messageType: ClientPacketType.ACKNOWLEDGE,
+                            packetType: ClientPacketType.ACKNOWLEDGE,
                             serialId: sendResult.event.serialId,
                         },
                     },
@@ -354,7 +354,7 @@ describe("Four peers", () => {
                         from: hostPeerId,
                         to: clientPeerIds[2],
                         data: {
-                            messageType: HostPacketType.RELAYED_EVENT,
+                            packetType: HostPacketType.RELAYED_EVENT,
                             event: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
@@ -370,7 +370,7 @@ describe("Four peers", () => {
                         from: clientPeerIds[2],
                         to: hostPeerId,
                         data: {
-                            messageType: ClientPacketType.ACKNOWLEDGE,
+                            packetType: ClientPacketType.ACKNOWLEDGE,
                             serialId: sendResult.event.serialId,
                         },
                     },
@@ -378,7 +378,7 @@ describe("Four peers", () => {
                         from: hostPeerId,
                         to: clientPeerIds[0],
                         data: {
-                            messageType: HostPacketType.ACKNOWLEDGED_BY_ALL,
+                            packetType: HostPacketType.ACKNOWLEDGED_BY_ALL,
                             serialId: sendResult.event.serialId,
                         },
                     },
@@ -405,7 +405,7 @@ describe("Four peers", () => {
                     from: hostPeerId,
                     to: clientPeerIds[0],
                     data: {
-                        messageType: HostPacketType.PING,
+                        packetType: HostPacketType.PING,
                         initiationDate: now,
                     },
                 },
@@ -413,7 +413,7 @@ describe("Four peers", () => {
                     from: clientPeerIds[0],
                     to: hostPeerId,
                     data: {
-                        messageType: ClientPacketType.PONG,
+                        packetType: ClientPacketType.PONG,
                         initiationDate: now,
                         sequenceNumber: 1,
                     },
@@ -422,7 +422,7 @@ describe("Four peers", () => {
                     from: hostPeerId,
                     to: clientPeerIds[1],
                     data: {
-                        messageType: HostPacketType.PING,
+                        packetType: HostPacketType.PING,
                         initiationDate: now,
                     },
                 },
@@ -430,7 +430,7 @@ describe("Four peers", () => {
                     from: clientPeerIds[1],
                     to: hostPeerId,
                     data: {
-                        messageType: ClientPacketType.PONG,
+                        packetType: ClientPacketType.PONG,
                         initiationDate: now,
                         sequenceNumber: 1,
                     },
@@ -439,7 +439,7 @@ describe("Four peers", () => {
                     from: hostPeerId,
                     to: clientPeerIds[2],
                     data: {
-                        messageType: HostPacketType.PING,
+                        packetType: HostPacketType.PING,
                         initiationDate: now,
                     },
                 },
@@ -447,7 +447,7 @@ describe("Four peers", () => {
                     from: clientPeerIds[2],
                     to: hostPeerId,
                     data: {
-                        messageType: ClientPacketType.PONG,
+                        packetType: ClientPacketType.PONG,
                         initiationDate: now,
                         sequenceNumber: 1,
                     },
@@ -507,7 +507,7 @@ describe("Four peers", () => {
                         from: hostPeerId,
                         to: clientPeerIds[0],
                         data: {
-                            messageType: HostPacketType.PING_INFO,
+                            packetType: HostPacketType.PING_INFO,
                             pingInfos,
                         },
                     },
@@ -515,7 +515,7 @@ describe("Four peers", () => {
                         from: hostPeerId,
                         to: clientPeerIds[1],
                         data: {
-                            messageType: HostPacketType.PING_INFO,
+                            packetType: HostPacketType.PING_INFO,
                             pingInfos,
                         },
                     },
@@ -523,7 +523,7 @@ describe("Four peers", () => {
                         from: hostPeerId,
                         to: clientPeerIds[2],
                         data: {
-                            messageType: HostPacketType.PING_INFO,
+                            packetType: HostPacketType.PING_INFO,
                             pingInfos,
                         },
                     },

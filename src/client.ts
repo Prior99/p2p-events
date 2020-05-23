@@ -24,7 +24,7 @@ export class Client<TUser extends User, TEventIds> extends Peer<TUser, TEventIds
             this.connection.on("open", () => {
                 this.connection!.on("data", data => this.handleHostMessage(data));
                 this.sendClientMessage({
-                    messageType: ClientPacketType.HELLO,
+                    packetType: ClientPacketType.HELLO,
                     applicationProtocolVersion: this.options.applicationProtocolVersion,
                     protocolVersion: libraryVersion,
                     user: this.ownUser,

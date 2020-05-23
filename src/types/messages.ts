@@ -24,53 +24,53 @@ export const enum ClientPacketType {
 }
 
 export interface HostPacketWelcome<TUser extends User> {
-    messageType: HostPacketType.WELCOME;
+    packetType: HostPacketType.WELCOME;
     users: UserInfo<TUser>[];
 }
 
 export interface HostPacketIncompatible {
-    messageType: HostPacketType.INCOMPATIBLE,
+    packetType: HostPacketType.INCOMPATIBLE,
     applicationProtocolVersion: string;
     protocolVersion: string;
 }
 
 export interface HostPacketUserConnected<TUser extends User> {
-    messageType: HostPacketType.USER_CONNECTED;
+    packetType: HostPacketType.USER_CONNECTED;
     user: TUser;
 }
 
 export interface HostPacketUserDisconnected {
-    messageType: HostPacketType.USER_DISCONNECTED;
+    packetType: HostPacketType.USER_DISCONNECTED;
     userId: string;
 }
 
 export interface HostPacketPing {
-    messageType: HostPacketType.PING;
+    packetType: HostPacketType.PING;
     initiationDate: number;
 }
 
 export interface HostPacketRelayedEvent<TPayload> {
-    messageType: HostPacketType.RELAYED_EVENT;
+    packetType: HostPacketType.RELAYED_EVENT;
     event: P2PEvent<TPayload>;
 }
 
 export interface HostPacketAcknowledgedByHost {
-    messageType: HostPacketType.ACKNOWLEDGED_BY_HOST;
+    packetType: HostPacketType.ACKNOWLEDGED_BY_HOST;
     serialId: string;
 }
 
 export interface HostPacketAcknowledgedByAll {
-    messageType: HostPacketType.ACKNOWLEDGED_BY_ALL;
+    packetType: HostPacketType.ACKNOWLEDGED_BY_ALL;
     serialId: string;
 }
 
 export interface HostPacketPingInfo {
-    messageType: HostPacketType.PING_INFO;
+    packetType: HostPacketType.PING_INFO;
     pingInfos: ({ userId: string } & PingInfo)[];
 }
 
 export interface HostPacketUpdateUser<TUser extends User> {
-    messageType: HostPacketType.UPDATE_USER;
+    packetType: HostPacketType.UPDATE_USER;
     user: Partial<TUser> & User;
 }
 
@@ -87,34 +87,34 @@ export type HostPacket<TUser extends User, TPayload> =
     | HostPacketIncompatible;
 
 export interface ClientPacketHello<TUser extends User> {
-    messageType: ClientPacketType.HELLO;
+    packetType: ClientPacketType.HELLO;
     user: TUser;
     applicationProtocolVersion: string;
     protocolVersion: string;
 }
 
 export interface ClientPacketDisconnect {
-    messageType: ClientPacketType.DISCONNECT;
+    packetType: ClientPacketType.DISCONNECT;
 }
 
 export interface ClientPacketPong {
-    messageType: ClientPacketType.PONG;
+    packetType: ClientPacketType.PONG;
     initiationDate: number;
     sequenceNumber: number;
 }
 
 export interface ClientPacketEvent<TPayload> {
-    messageType: ClientPacketType.EVENT;
+    packetType: ClientPacketType.EVENT;
     event: P2PEvent<TPayload>;
 }
 
 export interface ClientPacketAcknowledge {
-    messageType: ClientPacketType.ACKNOWLEDGE;
+    packetType: ClientPacketType.ACKNOWLEDGE;
     serialId: string;
 }
 
 export interface ClientPacketUpdateUser<TUser extends User> {
-    messageType: ClientPacketType.UPDATE_USER;
+    packetType: ClientPacketType.UPDATE_USER;
     user: Partial<TUser> & User;
 }
 

@@ -38,7 +38,7 @@ describe("Simple", () => {
                 from: clientPeerId,
                 to: hostPeerId,
                 data: {
-                    messageType: ClientPacketType.HELLO,
+                    packetType: ClientPacketType.HELLO,
                     applicationProtocolVersion: "1.0.0",
                     protocolVersion: libraryVersion,
                     user: client.ownUser,
@@ -48,7 +48,7 @@ describe("Simple", () => {
                 from: hostPeerId,
                 to: clientPeerId,
                 data: {
-                    messageType: HostPacketType.WELCOME,
+                    packetType: HostPacketType.WELCOME,
                     users: [
                         {
                             lastPingDate: expect.any(Number),
@@ -63,7 +63,7 @@ describe("Simple", () => {
                 from: hostPeerId,
                 to: clientPeerId,
                 data: {
-                    messageType: HostPacketType.USER_CONNECTED,
+                    packetType: HostPacketType.USER_CONNECTED,
                     user: client.ownUser,
                 },
             },
@@ -145,7 +145,7 @@ describe("Simple", () => {
                         from: clientPeerId,
                         to: hostPeerId,
                         data: {
-                            messageType: ClientPacketType.EVENT,
+                            packetType: ClientPacketType.EVENT,
                             event: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
@@ -161,7 +161,7 @@ describe("Simple", () => {
                         from: hostPeerId,
                         to: clientPeerId,
                         data: {
-                            messageType: HostPacketType.ACKNOWLEDGED_BY_HOST,
+                            packetType: HostPacketType.ACKNOWLEDGED_BY_HOST,
                             serialId: sendResult.event.serialId,
                         },
                     },
@@ -169,7 +169,7 @@ describe("Simple", () => {
                         from: hostPeerId,
                         to: clientPeerId,
                         data: {
-                            messageType: HostPacketType.RELAYED_EVENT,
+                            packetType: HostPacketType.RELAYED_EVENT,
                             event: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
@@ -185,7 +185,7 @@ describe("Simple", () => {
                         from: clientPeerId,
                         to: hostPeerId,
                         data: {
-                            messageType: ClientPacketType.ACKNOWLEDGE,
+                            packetType: ClientPacketType.ACKNOWLEDGE,
                             serialId: sendResult.event.serialId,
                         },
                     },
@@ -193,7 +193,7 @@ describe("Simple", () => {
                         from: hostPeerId,
                         to: clientPeerId,
                         data: {
-                            messageType: HostPacketType.ACKNOWLEDGED_BY_ALL,
+                            packetType: HostPacketType.ACKNOWLEDGED_BY_ALL,
                             serialId: sendResult.event.serialId,
                         },
                     },

@@ -119,7 +119,7 @@ export abstract class Peer<TUser extends User, TEventId> {
 
     public updateUser(user: Partial<TUser>): void {
         this.sendClientMessage({
-            messageType: ClientPacketType.UPDATE_USER,
+            packetType: ClientPacketType.UPDATE_USER,
             user: {
                 ...user,
                 id: this.userId,
@@ -177,7 +177,7 @@ export abstract class Peer<TUser extends User, TEventId> {
     protected abstract sendClientMessage<TEventPayload>(message: ClientPacket<TUser, TEventPayload>): void;
 
     protected handleHostMessage<TEventPayload>(message: HostPacket<TUser, TEventPayload>): void {
-        switch (message.messageType) {
+        switch (message.packetType) {
             case HostPacketType.WELCOME:
                 this.users.initialize(message.users);
                 this.emitEvent("connect");
@@ -192,7 +192,7 @@ export abstract class Peer<TUser extends User, TEventId> {
                 break;
             case HostPacketType.PING:
                 this.sendClientMessage({
-                    messageType: ClientPacketType.PONG,
+                    packetType: ClientPacketType.PONG,
                     initiationDate: message.initiationDate,
                     sequenceNumber: ++this.sequenceNumber,
                 });
@@ -232,7 +232,7 @@ export abstract class Peer<TUser extends User, TEventId> {
             return;
         }
         this.sendClientMessage({
-            messageType: ClientPacketType.ACKNOWLEDGE,
+            packetType: ClientPacketType.ACKNOWLEDGE,
             serialId: event.serialId,
         });
         const eventManager = this.events.get(event.eventId);
@@ -275,7 +275,7 @@ export abstract class Peer<TUser extends User, TEventId> {
             throw new Error("Can't close peer. Not connected.");
         }
         this.sendClientMessage({
-            messageType: ClientPacketType.DISCONNECT,
+            packetType: ClientPacketType.DISCONNECT,
         });
         this.peer.destroy();
     }
@@ -311,7 +311,7 @@ export abstract class Peer<TUser extends User, TEventId> {
         };
         setTimeout(() =>
             this.sendClientMessage({
-                messageType: ClientPacketType.EVENT,
+                packetType: ClientPacketType.EVENT,
                 event,
             }),
         );
