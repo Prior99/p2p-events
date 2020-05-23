@@ -1,6 +1,6 @@
 jest.mock("peerjs");
-import { Host, Client, ClientMessageType, HostMessageType, EventManager, SendEventManager } from "../src";
-import { resetHistory, getHistory } from "./message-history";
+import { Host, Client, ClientPacketType, HostPacketType, EventManager, SendEventManager } from "../src";
+import { resetHistory, getHistory } from "./packet-history";
 import { libraryVersion } from "../generated/version";
 
 interface MockUser {
@@ -32,13 +32,13 @@ describe("Simple", () => {
         clientPeerId = clientOpenResult.peerId;
     });
 
-    it("has sent the expected messages", () => {
+    it("has sent the expected Packets", () => {
         expect(getHistory()).toEqual([
             {
                 from: clientPeerId,
                 to: hostPeerId,
                 data: {
-                    messageType: ClientMessageType.HELLO,
+                    messageType: ClientPacketType.HELLO,
                     applicationProtocolVersion: "1.0.0",
                     protocolVersion: libraryVersion,
                     user: client.ownUser,
@@ -48,7 +48,7 @@ describe("Simple", () => {
                 from: hostPeerId,
                 to: clientPeerId,
                 data: {
-                    messageType: HostMessageType.WELCOME,
+                    messageType: HostPacketType.WELCOME,
                     users: [
                         {
                             lastPingDate: expect.any(Number),
@@ -63,7 +63,7 @@ describe("Simple", () => {
                 from: hostPeerId,
                 to: clientPeerId,
                 data: {
-                    messageType: HostMessageType.USER_CONNECTED,
+                    messageType: HostPacketType.USER_CONNECTED,
                     user: client.ownUser,
                 },
             },
@@ -139,13 +139,13 @@ describe("Simple", () => {
             it("called the listener on the client", () =>
                 expect(spyEventClient).toHaveBeenCalledWith({ test: "something" }, client.userId, expect.any(Date)));
 
-            it("has sent the expected messages", () => {
+            it("has sent the expected Packets", () => {
                 expect(getHistory()).toEqual([
                     {
                         from: clientPeerId,
                         to: hostPeerId,
                         data: {
-                            messageType: ClientMessageType.EVENT,
+                            messageType: ClientPacketType.EVENT,
                             event: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
@@ -161,7 +161,7 @@ describe("Simple", () => {
                         from: hostPeerId,
                         to: clientPeerId,
                         data: {
-                            messageType: HostMessageType.ACKNOWLEDGED_BY_HOST,
+                            messageType: HostPacketType.ACKNOWLEDGED_BY_HOST,
                             serialId: sendResult.event.serialId,
                         },
                     },
@@ -169,7 +169,7 @@ describe("Simple", () => {
                         from: hostPeerId,
                         to: clientPeerId,
                         data: {
-                            messageType: HostMessageType.RELAYED_EVENT,
+                            messageType: HostPacketType.RELAYED_EVENT,
                             event: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
@@ -185,7 +185,7 @@ describe("Simple", () => {
                         from: clientPeerId,
                         to: hostPeerId,
                         data: {
-                            messageType: ClientMessageType.ACKNOWLEDGE,
+                            messageType: ClientPacketType.ACKNOWLEDGE,
                             serialId: sendResult.event.serialId,
                         },
                     },
@@ -193,7 +193,7 @@ describe("Simple", () => {
                         from: hostPeerId,
                         to: clientPeerId,
                         data: {
-                            messageType: HostMessageType.ACKNOWLEDGED_BY_ALL,
+                            messageType: HostPacketType.ACKNOWLEDGED_BY_ALL,
                             serialId: sendResult.event.serialId,
                         },
                     },

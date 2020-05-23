@@ -1,6 +1,6 @@
 import PeerJS from "peerjs";
 import { Users } from "./users";
-import { ClientMessage, HostMessage, HostMessageType, ClientMessageType, P2PEvent, PingInfo, User } from "./types";
+import { ClientPacket, HostPacket, HostPacketType, ClientPacketType, P2PEvent, PingInfo, User } from "./types";
 import { unreachable, PromiseListener, resolvePromiseListeners, rejectPromiseListeners } from "./utils";
 import { v4 as uuid } from "uuid";
 
@@ -119,7 +119,7 @@ export abstract class Peer<TUser extends User, TEventId> {
 
     public updateUser(user: Partial<TUser>): void {
         this.sendClientMessage({
-            messageType: ClientMessageType.UPDATE_USER,
+            messageType: ClientPacketType.UPDATE_USER,
             user: {
                 ...user,
                 id: this.userId,
@@ -174,39 +174,39 @@ export abstract class Peer<TUser extends User, TEventId> {
         return eventManager;
     }
 
-    protected abstract sendClientMessage<TEventPayload>(message: ClientMessage<TUser, TEventPayload>): void;
+    protected abstract sendClientMessage<TEventPayload>(message: ClientPacket<TUser, TEventPayload>): void;
 
-    protected handleHostMessage<TEventPayload>(message: HostMessage<TUser, TEventPayload>): void {
+    protected handleHostMessage<TEventPayload>(message: HostPacket<TUser, TEventPayload>): void {
         switch (message.messageType) {
-            case HostMessageType.WELCOME:
+            case HostPacketType.WELCOME:
                 this.users.initialize(message.users);
                 this.emitEvent("connect");
                 break;
-            case HostMessageType.USER_CONNECTED:
+            case HostPacketType.USER_CONNECTED:
                 this.users.addUser(message.user);
                 this.emitEvent("userconnect", message.user);
                 break;
-            case HostMessageType.USER_DISCONNECTED:
+            case HostPacketType.USER_DISCONNECTED:
                 this.users.removeUser(message.userId);
                 this.emitEvent("userdisconnect", message.userId);
                 break;
-            case HostMessageType.PING:
+            case HostPacketType.PING:
                 this.sendClientMessage({
-                    messageType: ClientMessageType.PONG,
+                    messageType: ClientPacketType.PONG,
                     initiationDate: message.initiationDate,
                     sequenceNumber: ++this.sequenceNumber,
                 });
                 break;
-            case HostMessageType.RELAYED_EVENT:
+            case HostPacketType.RELAYED_EVENT:
                 this.receivedEvent(message.event);
                 break;
-            case HostMessageType.ACKNOWLEDGED_BY_HOST:
+            case HostPacketType.ACKNOWLEDGED_BY_HOST:
                 this.eventAcknowledgedByHost(message.serialId);
                 break;
-            case HostMessageType.ACKNOWLEDGED_BY_ALL:
+            case HostPacketType.ACKNOWLEDGED_BY_ALL:
                 this.eventAcknowledgedByAll(message.serialId);
                 break;
-            case HostMessageType.PING_INFO: {
+            case HostPacketType.PING_INFO: {
                 const map = new Map<string, PingInfo>();
                 for (const { userId, ...pingInfo } of message.pingInfos) {
                     this.users.updatePingInfo(userId, pingInfo);
@@ -215,11 +215,11 @@ export abstract class Peer<TUser extends User, TEventId> {
                 this.emitEvent("pinginfo", map);
                 break;
             }
-            case HostMessageType.UPDATE_USER:
+            case HostPacketType.UPDATE_USER:
                 this.users.updateUser(message.user.id, message.user);
                 this.emitEvent("userupdate", this.users.getUser(message.user.id)!);
                 break;
-            case HostMessageType.INCOMPATIBLE:
+            case HostPacketType.INCOMPATIBLE:
                 throw new Error("Incompatible with host.");
                 break;
             default:
@@ -232,7 +232,7 @@ export abstract class Peer<TUser extends User, TEventId> {
             return;
         }
         this.sendClientMessage({
-            messageType: ClientMessageType.ACKNOWLEDGE,
+            messageType: ClientPacketType.ACKNOWLEDGE,
             serialId: event.serialId,
         });
         const eventManager = this.events.get(event.eventId);
@@ -275,7 +275,7 @@ export abstract class Peer<TUser extends User, TEventId> {
             throw new Error("Can't close peer. Not connected.");
         }
         this.sendClientMessage({
-            messageType: ClientMessageType.DISCONNECT,
+            messageType: ClientPacketType.DISCONNECT,
         });
         this.peer.destroy();
     }
@@ -296,7 +296,7 @@ export abstract class Peer<TUser extends User, TEventId> {
 
     protected sendToPeer<TEventPayload>(
         connection: PeerJS.DataConnection,
-        message: HostMessage<TUser, TEventPayload> | ClientMessage<TUser, TEventPayload>,
+        message: HostPacket<TUser, TEventPayload> | ClientPacket<TUser, TEventPayload>,
     ): void {
         connection.send(message);
     }
@@ -311,7 +311,7 @@ export abstract class Peer<TUser extends User, TEventId> {
         };
         setTimeout(() =>
             this.sendClientMessage({
-                messageType: ClientMessageType.EVENT,
+                messageType: ClientPacketType.EVENT,
                 event,
             }),
         );

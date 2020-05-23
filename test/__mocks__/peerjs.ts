@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { addEntry } from "../message-history";
+import { addEntry } from "../packet-history";
 
 const connections = new Map<string, string[]>();
 const instances = new Map<string, MockPeerJS>();

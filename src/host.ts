@@ -1,5 +1,5 @@
 import PeerJS from "peerjs";
-import { User, HostMessage, ClientMessage, ClientMessageType, HostMessageType, P2PEvent } from "./types";
+import { User, HostPacket, ClientPacket, ClientPacketType, HostPacketType, P2PEvent } from "./types";
 import { Peer, PeerOpenResult, PeerOptions, peerDefaultOptions } from "./peer";
 import { unreachable } from "./utils";
 import { libraryVersion } from "../generated/version";
@@ -52,14 +52,14 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
 
     public ping(): void {
         this.sendHostMessage({
-            messageType: HostMessageType.PING,
+            messageType: HostPacketType.PING,
             initiationDate: Date.now(),
         });
     }
 
     public informPing(): void {
         this.sendHostMessage({
-            messageType: HostMessageType.PING_INFO,
+            messageType: HostPacketType.PING_INFO,
             pingInfos: this.users.all.map(({ lastPingDate, lostPingMessages, roundTripTime, user }) => ({
                 lastPingDate,
                 lostPingMessages,
@@ -69,14 +69,14 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
         });
     }
 
-    protected sendHostMessage<TPayload>(message: HostMessage<TUser, TPayload>): void {
+    protected sendHostMessage<TPayload>(message: HostPacket<TUser, TPayload>): void {
         for (const connection of this.connections.values()) {
             this.sendToPeer(connection, message);
         }
         this.handleHostMessage(message);
     }
 
-    protected sendToUser<TPayload>(userId: string, message: HostMessage<TUser, TPayload>): void {
+    protected sendToUser<TPayload>(userId: string, message: HostPacket<TUser, TPayload>): void {
         if (userId === this.userId) {
             this.handleHostMessage(message);
             return;
@@ -88,42 +88,42 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
         this.sendToPeer(connection, message);
     }
 
-    protected handleClientMessage<TEventPayload>(userId: string, message: ClientMessage<TUser, TEventPayload>): void {
+    protected handleClientMessage<TEventPayload>(userId: string, message: ClientPacket<TUser, TEventPayload>): void {
         const connectionMeta = this.connectionMetas.get(userId);
         if (!connectionMeta) {
             throw new Error(`Inconsistency detected: Connection meta for user "${userId}" missing.`);
         }
         switch (message.messageType) {
-            case ClientMessageType.HELLO:
+            case ClientPacketType.HELLO:
                 throw new Error("Received unexpected hello message from client. Connection already initialized.");
-            case ClientMessageType.DISCONNECT:
+            case ClientPacketType.DISCONNECT:
                 this.sendHostMessage({
-                    messageType: HostMessageType.USER_DISCONNECTED,
+                    messageType: HostPacketType.USER_DISCONNECTED,
                     userId,
                 });
                 break;
-            case ClientMessageType.PONG:
+            case ClientPacketType.PONG:
                 this.users.updatePingInfo(userId, {
                     lostPingMessages: message.sequenceNumber - connectionMeta.lastSequenceNumber - 1,
                     roundTripTime: Date.now() - message.initiationDate,
                     lastPingDate: Date.now(),
                 });
                 break;
-            case ClientMessageType.EVENT: {
+            case ClientPacketType.EVENT: {
                 const { event } = message;
                 const { serialId } = event;
                 this.relayedEvents.set(event.serialId, { event, acknowledgedBy: new Set() });
                 this.sendToUser(userId, {
-                    messageType: HostMessageType.ACKNOWLEDGED_BY_HOST,
+                    messageType: HostPacketType.ACKNOWLEDGED_BY_HOST,
                     serialId,
                 });
                 this.sendHostMessage({
-                    messageType: HostMessageType.RELAYED_EVENT,
+                    messageType: HostPacketType.RELAYED_EVENT,
                     event,
                 });
                 break;
             }
-            case ClientMessageType.ACKNOWLEDGE: {
+            case ClientPacketType.ACKNOWLEDGE: {
                 const { serialId } = message;
                 const relayedEvent = this.relayedEvents.get(serialId);
                 if (!relayedEvent) {
@@ -139,14 +139,14 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
                 relayedEvent.acknowledgedBy.add(userId);
                 if (relayedEvent.acknowledgedBy.size === this.users.count) {
                     this.sendToUser(relayedEvent.event.originUserId, {
-                        messageType: HostMessageType.ACKNOWLEDGED_BY_ALL,
+                        messageType: HostPacketType.ACKNOWLEDGED_BY_ALL,
                         serialId,
                     });
                     this.relayedEvents.delete(serialId);
                 }
                 break;
             }
-            case ClientMessageType.UPDATE_USER:
+            case ClientPacketType.UPDATE_USER:
                 if (message.user.id !== undefined) {
                     throw new Error(`Inconsistency detected: User "${userId}" can't update user id.`);
                 }
@@ -157,23 +157,23 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
         }
     }
 
-    protected sendClientMessage<TPayload>(message: ClientMessage<TUser, TPayload>): void {
+    protected sendClientMessage<TPayload>(message: ClientPacket<TUser, TPayload>): void {
         this.handleClientMessage(this.userId, message);
     }
 
     protected handleConnect(connection: PeerJS.DataConnection): void {
         let userId: string;
         connection.on("data", (json) => {
-            const message: ClientMessage<TUser, unknown> = json;
+            const message: ClientPacket<TUser, unknown> = json;
             switch (message.messageType) {
-                case ClientMessageType.HELLO:
+                case ClientPacketType.HELLO:
                     userId = message.user.id;
                     if (
                         message.applicationProtocolVersion !== this.options.applicationProtocolVersion ||
                         message.protocolVersion !== libraryVersion
                     ) {
                         this.sendToPeer(connection, {
-                            messageType: HostMessageType.INCOMPATIBLE,
+                            messageType: HostPacketType.INCOMPATIBLE,
                             applicationProtocolVersion: this.options.applicationProtocolVersion,
                             protocolVersion: libraryVersion,
                         });
@@ -181,12 +181,12 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
                     }
                     this.connectionMetas.set(userId, { lastSequenceNumber: 0, userId });
                     this.sendToPeer(connection, {
-                        messageType: HostMessageType.WELCOME,
+                        messageType: HostPacketType.WELCOME,
                         users: this.users.all,
                     });
                     this.connections.set(userId, connection);
                     this.sendHostMessage({
-                        messageType: HostMessageType.USER_CONNECTED,
+                        messageType: HostPacketType.USER_CONNECTED,
                         user: message.user,
                     });
                     break;

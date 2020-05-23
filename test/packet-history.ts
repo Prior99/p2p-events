@@ -6,14 +6,14 @@ interface HistoryEntry {
 
 let history: HistoryEntry[] = [];
 
-export function resetHistory() {
+export function resetHistory(): void {
     history = [];
 }
 
-export function getHistory() {
+export function getHistory(): HistoryEntry[] {
     return history;
 }
 
-export function addEntry(entry: HistoryEntry) {
+export function addEntry(entry: HistoryEntry): void {
     history.push(entry);
 }

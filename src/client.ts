@@ -1,6 +1,6 @@
 import PeerJS from "peerjs";
 import { Peer, PeerOpenResult } from "./peer";
-import { ClientMessage, ClientMessageType, User } from "./types";
+import { ClientPacket, ClientPacketType, User } from "./types";
 import { libraryVersion } from "../generated/version";
 
 export interface ClientOpenResult extends PeerOpenResult {
@@ -12,7 +12,7 @@ export class Client<TUser extends User, TEventIds> extends Peer<TUser, TEventIds
 
     public hostPeerId: string | undefined;
 
-    protected sendClientMessage<TPayload>(message: ClientMessage<TUser, TPayload>): void {
+    protected sendClientMessage<TPayload>(message: ClientPacket<TUser, TPayload>): void {
         if (!this.connection) { throw new Error("Can't send message: Connection is not open."); }
         this.sendToPeer(this.connection, message);
     }
@@ -24,7 +24,7 @@ export class Client<TUser extends User, TEventIds> extends Peer<TUser, TEventIds
             this.connection.on("open", () => {
                 this.connection!.on("data", data => this.handleHostMessage(data));
                 this.sendClientMessage({
-                    messageType: ClientMessageType.HELLO,
+                    messageType: ClientPacketType.HELLO,
                     applicationProtocolVersion: this.options.applicationProtocolVersion,
                     protocolVersion: libraryVersion,
                     user: this.ownUser,
