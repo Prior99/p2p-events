@@ -1,3 +1,3 @@
-export * from "./messages";
-export * from "./p2p-event";
+export * from "./packets";
+export * from "./message";
 export * from "./users";

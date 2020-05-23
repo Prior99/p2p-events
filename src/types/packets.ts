@@ -1,5 +1,5 @@
 import { UserInfo, User, PingInfo } from "./users";
-import { P2PEvent } from "./p2p-event";
+import { P2PEvent } from "./message";
 
 export const enum HostPacketType {
     WELCOME = "welcome",
