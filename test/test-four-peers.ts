@@ -61,7 +61,7 @@ describe("Four peers", () => {
                     users: [
                         {
                             lastPingDate: expect.any(Number),
-                            lostPingMessages: 0,
+                            lostPingPackets: 0,
                             roundTripTime: undefined,
                             user: host.ownUser,
                         },
@@ -96,13 +96,13 @@ describe("Four peers", () => {
                     users: [
                         {
                             lastPingDate: expect.any(Number),
-                            lostPingMessages: 0,
+                            lostPingPackets: 0,
                             roundTripTime: undefined,
                             user: host.ownUser,
                         },
                         {
                             lastPingDate: expect.any(Number),
-                            lostPingMessages: 0,
+                            lostPingPackets: 0,
                             roundTripTime: undefined,
                             user: clients[0].ownUser,
                         },
@@ -145,19 +145,19 @@ describe("Four peers", () => {
                     users: [
                         {
                             lastPingDate: expect.any(Number),
-                            lostPingMessages: 0,
+                            lostPingPackets: 0,
                             roundTripTime: undefined,
                             user: host.ownUser,
                         },
                         {
                             lastPingDate: expect.any(Number),
-                            lostPingMessages: 0,
+                            lostPingPackets: 0,
                             roundTripTime: undefined,
                             user: clients[0].ownUser,
                         },
                         {
                             lastPingDate: expect.any(Number),
-                            lostPingMessages: 0,
+                            lostPingPackets: 0,
                             roundTripTime: undefined,
                             user: clients[1].ownUser,
                         },
@@ -536,25 +536,25 @@ describe("Four peers", () => {
                         userId: host.userId,
                         lastPingDate: now,
                         roundTripTime: 0,
-                        lostPingMessages: 0,
+                        lostPingPackets: 0,
                     },
                     {
                         userId: clients[0].userId,
                         lastPingDate: now,
                         roundTripTime: 0,
-                        lostPingMessages: 0,
+                        lostPingPackets: 0,
                     },
                     {
                         userId: clients[1].userId,
                         lastPingDate: now,
                         roundTripTime: 0,
-                        lostPingMessages: 0,
+                        lostPingPackets: 0,
                     },
                     {
                         userId: clients[2].userId,
                         lastPingDate: now,
                         roundTripTime: 0,
-                        lostPingMessages: 0,
+                        lostPingPackets: 0,
                     },
                 ].sort((a, b) => a.userId.localeCompare(b.userId));
             });
@@ -563,9 +563,9 @@ describe("Four peers", () => {
                 [host, ...clients].forEach((peer) =>
                     expect(
                         Array.from(peer.pingInfos.entries()).map(
-                            ([userId, { lastPingDate, lostPingMessages, roundTripTime }]) => ({
+                            ([userId, { lastPingDate, lostPingPackets: lostPingPackets, roundTripTime }]) => ({
                                 lastPingDate,
-                                lostPingMessages,
+                                lostPingPackets,
                                 roundTripTime,
                                 userId: userId,
                             }),

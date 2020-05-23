@@ -159,8 +159,8 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
 
     public get pingInfos(): Map<string, PingInfo> {
         const map = new Map<string, PingInfo>();
-        for (const { user, lastPingDate, lostPingMessages, roundTripTime } of this.userManager.all) {
-            map.set(user.id, { lastPingDate, lostPingMessages, roundTripTime });
+        for (const { user, lastPingDate, lostPingPackets: lostPingPackets, roundTripTime } of this.userManager.all) {
+            map.set(user.id, { lastPingDate, lostPingPackets: lostPingPackets, roundTripTime });
         }
         return map;
     }
@@ -218,7 +218,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                     waitForHostListeners: new Set(),
                     waitForAllListeners: new Set(),
                     timeout: setTimeout(() => {
-                        const error = new Error(
+                        const error = new NetworkError(
                             `Timeout: No acknowledge for message "${message.messageType}" with serial "${message.serialId}" within ${this.options.timeout} seconds.`,
                         );
                         rejectPromiseListeners(Array.from(sentMessageState.waitForHostListeners.values()), error);
@@ -359,7 +359,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
 
     public close(): void {
         if (!this.peer) {
-            this.throwError(new Error("Can't close peer. Not connected."));
+            this.throwError(new InternalError("Can't close peer. Not connected."));
         }
         this.sendClientPacketToHost({
             packetType: ClientPacketType.DISCONNECT,
@@ -375,7 +375,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
             this.peer.on("open", () => resolve());
         });
         if (!this.peer) {
-            this.throwError(new Error("Connection id could not be determined."));
+            this.throwError(new InternalError("Connection id could not be determined."));
         }
         this.networkMode = NetworkMode.CLIENT;
         return {

@@ -1,5 +1,8 @@
 import { Versions } from "../types";
 
+/**
+ * The error hat internal reasons, caused by a bug in the protocol or this library.
+ */
 export class InternalError extends Error {}
 
 export const enum IncompatibleVersion {
@@ -7,6 +10,9 @@ export const enum IncompatibleVersion {
     P2P_NETWORK_VERSION = "protocol version",
 }
 
+/**
+ * The error was caused by the application or library being incompatible.
+ */
 export class IncompatibilityError extends Error {
     constructor(message: string, public localVersions: Versions, public hostVersions: Versions) {
         super(message);

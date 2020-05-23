@@ -156,7 +156,7 @@ describe("Simple", () => {
                     users: [
                         {
                             lastPingDate: expect.any(Number),
-                            lostPingMessages: 0,
+                            lostPingPackets: 0,
                             roundTripTime: undefined,
                             user: host.ownUser,
                         },

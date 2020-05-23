@@ -1,8 +1,17 @@
 import { UserInfo, User, PingInfo } from "./users";
 import { Message } from "./message";
 
+/**
+ * The versions used by this instance.
+ */
 export interface Versions {
+    /**
+     * The version of the application as specified in the options.
+     */
     application: string;
+    /**
+     * The version of this library.
+     */
     p2pNetwork: string;
 }
 

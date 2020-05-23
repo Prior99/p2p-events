@@ -5,30 +5,60 @@ import { Peer, PeerOpenResult, PeerOptions, peerDefaultOptions } from "./peer";
 import { unreachable } from "./utils";
 import { libraryVersion } from "../generated/version";
 
-export interface ConnectionMeta {
+/**
+ * Meta information about one connection to this host.
+ */
+export interface Connection {
+    /**
+     * The actual PeerJS connection with the client.
+     */
+    dataConnection?: PeerJS.DataConnection;
+    /**
+     * The id of the user associated with this connection.
+     */
     userId: string;
+    /**
+     * A sequencenumber incremented by onw with each ping packet.
+     * Used to detect lost packets.
+     */
     lastSequenceNumber: number;
 }
 
+/**
+ * State the host needs to manage for an individual relayed message.
+ */
 export interface RelayedMessageState<TMessageType extends string | number, TPayload> {
+    /**
+     * The message this state is about.
+     */
     message: Message<TMessageType, TPayload>;
+    /**
+     * Set of user ids of users that already acknowledged this message.
+     */
     acknowledgedBy: Set<string>;
+    /**
+     * If specified, the message was only realayed to these users.
+     */
     targets?: string[];
-}
-
-export interface HostOpenResult extends PeerOpenResult {
-    networkId: string;
 }
 
 export interface HostOptions<TUser extends User> extends PeerOptions<TUser> {
     pingInterval?: number | undefined;
 }
 
+/**
+ * A peer participating as host in the network.
+ */
 export class Host<TUser extends User, TMessageType extends string | number> extends Peer<TUser, TMessageType> {
+    /**
+     * The options specified when this instance was created.
+     */
     public readonly options: HostOptions<TUser> & typeof peerDefaultOptions;
 
-    protected connections = new Map<string, PeerJS.DataConnection>();
-    protected connectionMetas = new Map<string, ConnectionMeta>([
+    /**
+     * All PeerJS connections to this host associated with their corresponding user ids.
+     */
+    protected connections = new Map<string, Connection>([
         [
             this.userId,
             {
@@ -37,8 +67,14 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
             },
         ],
     ]);
+    /**
+     * States about messages currently being relayed by this host.
+     */
     protected relayedMessageStates = new Map<string, RelayedMessageState<TMessageType, any>>(); // eslint-disable-line
 
+    /**
+     * @param inputOptions Options used by this instance.
+     */
     constructor(inputOptions: HostOptions<TUser>) {
         super(inputOptions);
         this.options = {
@@ -47,10 +83,17 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         };
     }
 
+    /**
+     * The peer id of the host of this network.
+     * Can be used to invite other peers into this network.
+     */
     public get hostConnectionId(): string | undefined {
         return this.peer?.id;
     }
 
+    /**
+     * Perform a single ping throughout the network, determining the round trip time or to find disconnected clients.
+     */
     public ping(): void {
         this.sendHostPacketToAll({
             packetType: HostPacketType.PING,
@@ -58,46 +101,68 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         });
     }
 
+    /**
+     * Publish the ping information determined by `ping()` with all clients in the network.
+     */
     public informPing(): void {
         this.sendHostPacketToAll({
             packetType: HostPacketType.PING_INFO,
-            pingInfos: this.userManager.all.map(({ lastPingDate, lostPingMessages, roundTripTime, user }) => ({
+            pingInfos: this.userManager.all.map(({ lastPingDate, lostPingPackets, roundTripTime, user }) => ({
                 lastPingDate,
-                lostPingMessages,
+                lostPingPackets,
                 roundTripTime,
                 userId: user.id,
             })),
         });
     }
 
+    /**
+     * Send a packet to all peers in the network, including this peer.
+     * @param packet The packet to send.
+     */
     protected sendHostPacketToAll<TPayload>(packet: HostPacket<TMessageType, TUser, TPayload>): void {
-        for (const connection of this.connections.values()) {
-            this.sendHostPacketToPeer(connection, packet);
+        for (const { dataConnection } of this.connections.values()) {
+            if (dataConnection) {
+                this.sendHostPacketToPeer(dataConnection, packet);
+            } else {
+                this.handleHostPacket(packet);
+            }
         }
-        this.handleHostPacket(packet);
     }
 
+    /**
+     * Send a packet to one specific user in the network.
+     * @param packet The packet to send.
+     */
     protected sendHostPacketToUser<TPayload>(userId: string, packet: HostPacket<TMessageType, TUser, TPayload>): void {
-        if (userId === this.userId) {
-            this.handleHostPacket(packet);
-            return;
-        }
         const connection = this.connections.get(userId);
         if (!connection) {
             this.throwError(new InternalError(`Can't send message to unknown user with id "${userId}".`));
         }
-        this.sendHostPacketToPeer(connection, packet);
+        const { dataConnection } = connection;
+        if (!dataConnection) {
+            this.handleHostPacket(packet);
+        } else {
+            this.sendHostPacketToPeer(dataConnection, packet);
+        }
     }
 
+    /**
+     * Called when a packet is received from a client.
+     * @param userId The user id of the user associated with the connection this packet came from.
+     * @param packet The packet that was received.
+     */
     protected handleClientPacket<TPayload>(userId: string, packet: ClientPacket<TMessageType, TUser, TPayload>): void {
         debug("Received packet from client of type %s: %O", packet.packetType, packet);
-        const connectionMeta = this.connectionMetas.get(userId);
-        if (!connectionMeta) {
+        const connection = this.connections.get(userId);
+        if (!connection) {
             this.throwError(new InternalError(`Connection meta for user "${userId}" missing.`));
         }
         switch (packet.packetType) {
             case ClientPacketType.HELLO:
-                this.throwError(new InternalError("Received unexpected hello message from client. Connection already initialized."));
+                this.throwError(
+                    new InternalError("Received unexpected hello message from client. Connection already initialized."),
+                );
                 break;
             case ClientPacketType.DISCONNECT:
                 this.sendHostPacketToAll({
@@ -107,7 +172,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                 break;
             case ClientPacketType.PONG:
                 this.userManager.updatePingInfo(userId, {
-                    lostPingMessages: packet.sequenceNumber - connectionMeta.lastSequenceNumber - 1,
+                    lostPingPackets: packet.sequenceNumber - connection.lastSequenceNumber - 1,
                     roundTripTime: (Date.now() - packet.initiationDate) / 1000,
                     lastPingDate: Date.now(),
                 });
@@ -137,10 +202,16 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                 const { serialId } = packet;
                 const relayedMessageState = this.relayedMessageStates.get(serialId);
                 if (!relayedMessageState) {
-                    this.throwError(new InternalError(`User "${userId}" acknowledged message with unknown serial id "${serialId}".`));
+                    this.throwError(
+                        new InternalError(
+                            `User "${userId}" acknowledged message with unknown serial id "${serialId}".`,
+                        ),
+                    );
                 }
                 if (relayedMessageState.acknowledgedBy.has(userId)) {
-                    this.throwError(new InternalError(`User "${userId}" acknowledged message with serial id "${serialId}" twice.`));
+                    this.throwError(
+                        new InternalError(`User "${userId}" acknowledged message with serial id "${serialId}" twice.`),
+                    );
                 }
                 relayedMessageState.acknowledgedBy.add(userId);
                 if (
@@ -172,14 +243,21 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         }
     }
 
-
+    /**
+     * Send one packet to the host.
+     * @param packet The packet to send to the host.
+     */
     protected sendClientPacketToHost<TPayload>(packet: ClientPacket<TMessageType, TUser, TPayload>): void {
         this.handleClientPacket(this.userId, packet);
     }
 
-    protected handleConnect(connection: PeerJS.DataConnection): void {
+    /**
+     * Called when a new connection is made (new client connected).
+     * @param dataConnection The new connection.
+     */
+    protected handleConnect(dataConnection: PeerJS.DataConnection): void {
         let userId: string;
-        connection.on("data", (json) => {
+        dataConnection.on("data", (json) => {
             const message: ClientPacket<TMessageType, TUser, unknown> = json;
             switch (message.packetType) {
                 case ClientPacketType.HELLO:
@@ -188,7 +266,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                         message.versions.application !== this.options.applicationProtocolVersion ||
                         message.versions.p2pNetwork !== libraryVersion
                     ) {
-                        this.sendHostPacketToPeer(connection, {
+                        this.sendHostPacketToPeer(dataConnection, {
                             packetType: HostPacketType.INCOMPATIBLE,
                             versions: {
                                 application: this.options.applicationProtocolVersion,
@@ -197,12 +275,11 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                         });
                         break;
                     }
-                    this.connectionMetas.set(userId, { lastSequenceNumber: 0, userId });
-                    this.sendHostPacketToPeer(connection, {
+                    this.connections.set(userId, { dataConnection, lastSequenceNumber: 0, userId });
+                    this.sendHostPacketToPeer(dataConnection, {
                         packetType: HostPacketType.WELCOME,
                         users: this.userManager.all,
                     });
-                    this.connections.set(userId, connection);
                     this.sendHostPacketToAll({
                         packetType: HostPacketType.USER_CONNECTED,
                         user: message.user,
@@ -215,6 +292,10 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         });
     }
 
+    /**
+     * Start accepting connections.
+     * @returns Promise that resolves once the host is ready to accept connections.
+     */
     public async open(): Promise<PeerOpenResult> {
         this.networkMode = NetworkMode.CONNECTING;
         const openResult = await super.createLocalPeer();
@@ -231,4 +312,17 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         this.networkMode = NetworkMode.HOST;
         return openResult;
     }
+}
+
+/**
+ * Create a new host and wait for it to be ready to accept connections.
+ * @param options Options to hand to the host.
+ * @returns A promise that resolves with the instance once the host is ready to accept connections.
+ */
+export async function createHost<TUser extends User, TMessageType extends string | number>(
+    options: HostOptions<TUser>,
+): Promise<Host<TUser, TMessageType>> {
+    const host = new Host<TUser, TMessageType>(options);
+    await host.open();
+    return host;
 }
