@@ -1,9 +1,7 @@
 import PeerJS from "peerjs";
-import { HostMessage, ClientMessage, ClientMessageType, HostMessageType } from "./messages";
+import { User, HostMessage, ClientMessage, ClientMessageType, HostMessageType, P2PEvent } from "./types";
 import { Peer, PeerOpenResult, PeerOptions, peerDefaultOptions } from "./peer";
-import { User } from "./users";
-import { unreachable } from "./unreachable";
-import { P2PEvent } from "./p2p-event";
+import { unreachable } from "./utils";
 import { libraryVersion } from "../generated/version";
 
 export interface ConnectionMeta {

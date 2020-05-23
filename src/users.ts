@@ -1,16 +1,4 @@
-export interface User {
-    id: string;
-}
-
-export interface PingInfo {
-    lastPingDate: number;
-    roundTripTime: number | undefined;
-    lostPingMessages: number;
-}
-
-export interface UserInfo<TUser extends User> extends PingInfo {
-    user: TUser;
-}
+import { UserInfo, User, PingInfo } from "./types";
 
 export class Users<TUser extends User> {
     private users = new Map<string, UserInfo<TUser>>();

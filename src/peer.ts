@@ -1,10 +1,8 @@
 import PeerJS from "peerjs";
-import { User, Users, PingInfo } from "./users";
-import { ClientMessage, HostMessage, HostMessageType, ClientMessageType } from "./messages";
-import { unreachable } from "./unreachable";
+import { Users } from "./users";
+import { ClientMessage, HostMessage, HostMessageType, ClientMessageType, P2PEvent, PingInfo, User } from "./types";
+import { unreachable, PromiseListener, resolvePromiseListeners, rejectPromiseListeners } from "./utils";
 import { v4 as uuid } from "uuid";
-import { P2PEvent } from "./p2p-event";
-import { PromiseListener, resolvePromiseListeners, rejectPromiseListeners } from "./promise-utils";
 
 export type EventHandler<TPayload> = (payload: TPayload, userId: string, createdDate: Date) => void;
 export type Unsubscribe = () => void;

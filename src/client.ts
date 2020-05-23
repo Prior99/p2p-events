@@ -1,7 +1,6 @@
 import PeerJS from "peerjs";
-import { User } from "./users";
 import { Peer, PeerOpenResult } from "./peer";
-import { ClientMessage, ClientMessageType } from "./messages";
+import { ClientMessage, ClientMessageType, User } from "./types";
 import { libraryVersion } from "../generated/version";
 
 export interface ClientOpenResult extends PeerOpenResult {
