@@ -29,7 +29,7 @@ export class Users<TUser extends User> {
         return user ? new Date(user.lastPingDate) : undefined;
     }
 
-    public updateUser(userId: string, update: Partial<TUser>): void {
+    public updateUser(userId: string, update: Omit<Partial<TUser>, "id">): void {
         const userInfo = this.users.get(userId);
         if (!userInfo) {
             throw new Error(`No user with id "${userId}".`);

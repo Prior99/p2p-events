@@ -115,7 +115,7 @@ export interface ClientPacketAcknowledge {
 
 export interface ClientPacketUpdateUser<TUser extends User> {
     packetType: ClientPacketType.UPDATE_USER;
-    user: Partial<TUser> & User;
+    user: Omit<Partial<TUser>, "id">;
 }
 
 export type ClientPacket<TMessageType extends string | number, TUser extends User, TPayload> =

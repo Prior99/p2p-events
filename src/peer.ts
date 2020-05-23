@@ -142,54 +142,51 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         listeners.forEach((listener) => listener(...args));
     }
 
-    public updateUser(user: Partial<TUser>): void {
+    public updateUser(user: Omit<Partial<TUser>, "id">): void {
         this.sendClientPacket({
             packetType: ClientPacketType.UPDATE_USER,
-            user: {
-                ...user,
-                id: this.userId,
-            },
+            user,
         });
     }
 
     public message<TPayload>(messageType: TMessageType): MessageFactory<TMessageType, TPayload> {
-        const eventMeta: MessageFactoryState<TMessageType, TPayload> = {
+        const messageFactoryState: MessageFactoryState<TMessageType, TPayload> = {
             messageType,
             subscriptions: new Set(),
         };
-        this.messageFactoryStates.set(messageType, eventMeta);
+        this.messageFactoryStates.set(messageType, messageFactoryState);
         const messageFactory: MessageFactory<TMessageType, TPayload> = {
             subscribe: (handler: MessageHandler<TPayload>) => {
-                eventMeta.subscriptions.add(handler);
-                return () => eventMeta.subscriptions.delete(handler);
+                messageFactoryState.subscriptions.add(handler);
+                return () => messageFactoryState.subscriptions.delete(handler);
             },
             send: (payload: TPayload) => {
                 const message = this.sendMessage(messageType, payload);
-                const pendingEventManager: SentMessageState<TMessageType, TPayload> = {
+                const sentMessageState: SentMessageState<TMessageType, TPayload> = {
                     message,
                     waitForHostListeners: new Set(),
                     waitForAllListeners: new Set(),
                     timeout: setTimeout(() => {
                         const error = new Error(
-                            `Timeout: No acknowledge for event "${message.messageType}" with serial "${message.serialId}" within ${this.options.timeout} seconds.`,
+                            `Timeout: No acknowledge for message "${message.messageType}" with serial "${message.serialId}" within ${this.options.timeout} seconds.`,
                         );
-                        rejectPromiseListeners(Array.from(pendingEventManager.waitForHostListeners.values()), error);
-                        rejectPromiseListeners(Array.from(pendingEventManager.waitForAllListeners.values()), error);
+                        rejectPromiseListeners(Array.from(sentMessageState.waitForHostListeners.values()), error);
+                        rejectPromiseListeners(Array.from(sentMessageState.waitForAllListeners.values()), error);
                         this.ignoreSerialId(message.serialId);
                         this.sentMessageStates.delete(message.serialId);
                     }, this.options.timeout * 1000),
                 };
-                this.sentMessageStates.set(message.serialId, pendingEventManager);
+                this.sentMessageStates.set(message.serialId, sentMessageState);
                 return {
                     message,
                     waitForHost: () => {
                         return new Promise((resolve, reject) => {
-                            pendingEventManager.waitForHostListeners.add({ resolve, reject });
+                            sentMessageState.waitForHostListeners.add({ resolve, reject });
                         });
                     },
                     waitForAll: () => {
                         return new Promise((resolve, reject) => {
-                            pendingEventManager.waitForAllListeners.add({ resolve, reject });
+                            sentMessageState.waitForAllListeners.add({ resolve, reject });
                         });
                     },
                 };
@@ -198,9 +195,9 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         return messageFactory;
     }
 
-    protected abstract sendClientPacket<TEventPayload>(packet: ClientPacket<TMessageType, TUser, TEventPayload>): void;
+    protected abstract sendClientPacket<TPayload>(packet: ClientPacket<TMessageType, TUser, TPayload>): void;
 
-    protected handleHostPacket<TEventPayload>(packet: HostPacket<TMessageType, TUser, TEventPayload>): void {
+    protected handleHostPacket<TPayload>(packet: HostPacket<TMessageType, TUser, TPayload>): void {
         switch (packet.packetType) {
             case HostPacketType.WELCOME:
                 this.userManager.initialize(packet.users);
@@ -230,13 +227,13 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                     packetType: ClientPacketType.ACKNOWLEDGE,
                     serialId: message.serialId,
                 });
-                const eventManager = this.messageFactoryStates.get(message.messageType);
-                if (!eventManager) {
-                    throw new Error(`Received unknown event with id "${message.messageType}".`);
+                const messageFactoryState = this.messageFactoryStates.get(message.messageType);
+                if (!messageFactoryState) {
+                    throw new Error(`Received unknown message of type "${message.messageType}".`);
                 }
                 const createdDate = new Date(message.createdDate);
                 this.emitEvent("message", message, message.originUserId, createdDate);
-                eventManager.subscriptions.forEach((subscription) =>
+                messageFactoryState.subscriptions.forEach((subscription) =>
                     subscription(message.payload, message.originUserId, createdDate),
                 );
                 break;
@@ -246,11 +243,11 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 if (this.ignoredSerialIds.has(serialId)) {
                     return;
                 }
-                const pendingEvent = this.sentMessageStates.get(serialId);
-                if (!pendingEvent) {
-                    throw new Error(`Inconsistency detected. No pending event with serial id "${serialId}".`);
+                const sentMessageState = this.sentMessageStates.get(serialId);
+                if (!sentMessageState) {
+                    throw new Error(`No sent message with serial id "${serialId}".`);
                 }
-                resolvePromiseListeners(Array.from(pendingEvent.waitForHostListeners.values()));
+                resolvePromiseListeners(Array.from(sentMessageState.waitForHostListeners.values()));
                 break;
             }
             case HostPacketType.ACKNOWLEDGED_BY_ALL: {
@@ -258,12 +255,12 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 if (this.ignoredSerialIds.has(serialId)) {
                     return;
                 }
-                const pendingEvent = this.sentMessageStates.get(serialId);
-                if (!pendingEvent) {
-                    throw new Error(`Inconsistency detected. No pending event with serial id "${serialId}".`);
+                const sentMessageState = this.sentMessageStates.get(serialId);
+                if (!sentMessageState) {
+                    throw new Error(`No sent message with serial id "${serialId}".`);
                 }
-                resolvePromiseListeners(Array.from(pendingEvent.waitForAllListeners.values()));
-                clearTimeout(pendingEvent.timeout);
+                resolvePromiseListeners(Array.from(sentMessageState.waitForAllListeners.values()));
+                clearTimeout(sentMessageState.timeout);
                 this.sentMessageStates.delete(serialId);
                 break;
             }
@@ -282,7 +279,6 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 break;
             case HostPacketType.INCOMPATIBLE:
                 throw new Error("Incompatible with host.");
-                break;
             default:
                 unreachable(packet);
         }

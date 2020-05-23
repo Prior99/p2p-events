@@ -143,10 +143,16 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                 break;
             }
             case ClientPacketType.UPDATE_USER:
-                if (packet.user.id !== undefined) {
+                if ("id" in packet.user) {
                     throw new Error(`User "${userId}" can't update user id.`);
                 }
-                this.userManager.updateUser(userId, packet.user);
+                this.sendHostPacketToAll({
+                    packetType: HostPacketType.UPDATE_USER,
+                    user: {
+                        ...packet.user,
+                        id: userId,
+                    },
+                });
                 break;
             default:
                 unreachable(packet);

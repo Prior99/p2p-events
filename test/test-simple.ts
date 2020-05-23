@@ -32,6 +32,108 @@ describe("Simple", () => {
         clientPeerId = clientOpenResult.peerId;
     });
 
+    it("has the same host connection ids for both peers", () =>
+        expect(host.hostConnectionId).toBe(client.hostConnectionId));
+
+    describe("after updating the user", () => {
+        let spyUserUpdate: jest.MockedFunction<any>;
+
+        beforeEach(() => {
+            spyUserUpdate = jest.fn();
+            host.on("userupdate", spyUserUpdate);
+            resetHistory();
+            client.updateUser({ name: "Mr. Newname" });
+        });
+
+        it("fires the event", () =>
+            expect(spyUserUpdate).toHaveBeenCalledWith({ id: client.userId, name: "Mr. Newname" }));
+
+        it("has sent the expected Packets", () => {
+            expect(getHistory()).toEqual([
+                {
+                    from: clientPeerId,
+                    to: hostPeerId,
+                    data: {
+                        packetType: ClientPacketType.UPDATE_USER,
+                        user: {
+                            name: "Mr. Newname",
+                        },
+                    },
+                },
+                {
+                    from: hostPeerId,
+                    to: clientPeerId,
+                    data: {
+                        packetType: HostPacketType.UPDATE_USER,
+                        user: {
+                            id: client.userId,
+                            name: "Mr. Newname",
+                        },
+                    },
+                },
+            ]);
+        });
+
+        it("updates the user", () => {
+            [client, host].forEach((peer) =>
+                expect(peer.users).toEqual(
+                    [
+                        {
+                            id: host.userId,
+                            name: "Mr. Host",
+                        },
+                        {
+                            id: client.userId,
+                            name: "Mr. Newname",
+                        },
+                    ].sort((a, b) => a.id.localeCompare(b.id)),
+                ),
+            );
+        });
+    });
+
+    describe("after disconnecting", () => {
+        let spyUserDisconnect: jest.MockedFunction<any>;
+
+        beforeEach(() => {
+            spyUserDisconnect = jest.fn();
+            host.on("userdisconnect", spyUserDisconnect);
+            resetHistory();
+            client.close();
+        });
+
+        it("fires the event", () => expect(spyUserDisconnect).toHaveBeenCalledWith(client.userId));
+
+        it("has sent the expected Packets", () => {
+            expect(getHistory()).toEqual([
+                {
+                    from: clientPeerId,
+                    to: hostPeerId,
+                    data: {
+                        packetType: ClientPacketType.DISCONNECT,
+                    },
+                },
+                {
+                    from: hostPeerId,
+                    to: clientPeerId,
+                    data: {
+                        packetType: HostPacketType.USER_DISCONNECTED,
+                        userId: client.userId,
+                    },
+                },
+            ]);
+        });
+
+        it("removed the user from host's users", () => {
+            expect(host.users).toEqual([
+                {
+                    id: host.userId,
+                    name: "Mr. Host",
+                },
+            ]);
+        });
+    });
+
     it("has sent the expected Packets", () => {
         expect(getHistory()).toEqual([
             {
