@@ -4,11 +4,12 @@
     "main": "dist/src/index.js",
     "license": "MIT",
     "scripts": {
-        "generate-version": "node -e 'process.stdout.write(`export const libraryVersion = \"${require(\"./package.json\").version}\";\n`)' > generated/version.ts",
+        "generate-version": "mkdir -p generated && node -e 'process.stdout.write(`export const libraryVersion = \"${require(\"./package.json\").version}\";\n`)' > generated/version.ts",
         "prebuild": "yarn generate-version",
         "build": "tsc -p .",
         "pretest": "yarn generate-version",
         "test": "jest",
+        "prepublish": "yarn build",
         "lint": "eslint --max-warnings 0 src/**/*.ts test/**/*.ts",
         "predocs": "yarn generate-version",
         "docs": "typedoc --mode file --out docs/ --exclude '**/test-*.ts,**/report-viewer/**/*' src/"
@@ -16,6 +17,15 @@
     "eslintConfig": {
         "extends": "./eslint-defaults.json"
     },
+    "typings": "dist/index.d.ts",
+    "files": [
+        "dist",
+        "src",
+        "package.json",
+        "README.md",
+        "LICENSE",
+        "generated"
+    ],
     "jest": {
         "collectCoverage": true,
         "moduleFileExtensions": [
