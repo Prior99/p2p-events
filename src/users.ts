@@ -1,4 +1,5 @@
 import { UserInfo, User, PingInfo } from "./types";
+import { InternalError } from "./utils";
 
 export class Users<TUser extends User> {
     private users = new Map<string, UserInfo<TUser>>();
@@ -32,7 +33,7 @@ export class Users<TUser extends User> {
     public updateUser(userId: string, update: Omit<Partial<TUser>, "id">): void {
         const userInfo = this.users.get(userId);
         if (!userInfo) {
-            throw new Error(`No user with id "${userId}".`);
+            throw new InternalError(`No user with id "${userId}".`);
         }
         this.users.set(userId, {
             ...userInfo,
@@ -46,7 +47,7 @@ export class Users<TUser extends User> {
     public updatePingInfo(userId: string, update: Partial<PingInfo>): void {
         const userInfo = this.users.get(userId);
         if (!userInfo) {
-            throw new Error(`No user with id "${userId}".`);
+            throw new InternalError(`No user with id "${userId}".`);
         }
         this.users.set(userId, {
             ...userInfo,

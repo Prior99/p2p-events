@@ -145,7 +145,7 @@ describe("Simple", () => {
                         application: "1.0.0",
                         p2pNetwork: libraryVersion,
                     },
-                    user: client.ownUser,
+                    user: client.user,
                 },
             },
             {
@@ -158,7 +158,7 @@ describe("Simple", () => {
                             lastPingDate: expect.any(Number),
                             lostPingPackets: 0,
                             roundTripTime: undefined,
-                            user: host.ownUser,
+                            user: host.user,
                         },
                     ],
                 },
@@ -168,7 +168,7 @@ describe("Simple", () => {
                 to: clientPeerId,
                 data: {
                     packetType: HostPacketType.USER_CONNECTED,
-                    user: client.ownUser,
+                    user: client.user,
                 },
             },
         ]);

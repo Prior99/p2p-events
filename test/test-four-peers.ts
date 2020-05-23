@@ -50,7 +50,7 @@ describe("Four peers", () => {
                         application: "1.0.0",
                         p2pNetwork: libraryVersion,
                     },
-                    user: clients[0].ownUser,
+                    user: clients[0].user,
                 },
             },
             {
@@ -63,7 +63,7 @@ describe("Four peers", () => {
                             lastPingDate: expect.any(Number),
                             lostPingPackets: 0,
                             roundTripTime: undefined,
-                            user: host.ownUser,
+                            user: host.user,
                         },
                     ].sort((a, b) => a.user.id.localeCompare(b.user.id)),
                 },
@@ -73,7 +73,7 @@ describe("Four peers", () => {
                 to: clientPeerIds[0],
                 data: {
                     packetType: HostPacketType.USER_CONNECTED,
-                    user: clients[0].ownUser,
+                    user: clients[0].user,
                 },
             },
             {
@@ -85,7 +85,7 @@ describe("Four peers", () => {
                         application: "1.0.0",
                         p2pNetwork: libraryVersion,
                     },
-                    user: clients[1].ownUser,
+                    user: clients[1].user,
                 },
             },
             {
@@ -98,13 +98,13 @@ describe("Four peers", () => {
                             lastPingDate: expect.any(Number),
                             lostPingPackets: 0,
                             roundTripTime: undefined,
-                            user: host.ownUser,
+                            user: host.user,
                         },
                         {
                             lastPingDate: expect.any(Number),
                             lostPingPackets: 0,
                             roundTripTime: undefined,
-                            user: clients[0].ownUser,
+                            user: clients[0].user,
                         },
                     ].sort((a, b) => a.user.id.localeCompare(b.user.id)),
                 },
@@ -114,7 +114,7 @@ describe("Four peers", () => {
                 to: clientPeerIds[0],
                 data: {
                     packetType: HostPacketType.USER_CONNECTED,
-                    user: clients[1].ownUser,
+                    user: clients[1].user,
                 },
             },
             {
@@ -122,7 +122,7 @@ describe("Four peers", () => {
                 to: clientPeerIds[1],
                 data: {
                     packetType: HostPacketType.USER_CONNECTED,
-                    user: clients[1].ownUser,
+                    user: clients[1].user,
                 },
             },
             {
@@ -134,7 +134,7 @@ describe("Four peers", () => {
                         application: "1.0.0",
                         p2pNetwork: libraryVersion,
                     },
-                    user: clients[2].ownUser,
+                    user: clients[2].user,
                 },
             },
             {
@@ -147,19 +147,19 @@ describe("Four peers", () => {
                             lastPingDate: expect.any(Number),
                             lostPingPackets: 0,
                             roundTripTime: undefined,
-                            user: host.ownUser,
+                            user: host.user,
                         },
                         {
                             lastPingDate: expect.any(Number),
                             lostPingPackets: 0,
                             roundTripTime: undefined,
-                            user: clients[0].ownUser,
+                            user: clients[0].user,
                         },
                         {
                             lastPingDate: expect.any(Number),
                             lostPingPackets: 0,
                             roundTripTime: undefined,
-                            user: clients[1].ownUser,
+                            user: clients[1].user,
                         },
                     ].sort((a, b) => a.user.id.localeCompare(b.user.id)),
                 },
@@ -169,7 +169,7 @@ describe("Four peers", () => {
                 to: clientPeerIds[0],
                 data: {
                     packetType: HostPacketType.USER_CONNECTED,
-                    user: clients[2].ownUser,
+                    user: clients[2].user,
                 },
             },
             {
@@ -177,7 +177,7 @@ describe("Four peers", () => {
                 to: clientPeerIds[1],
                 data: {
                     packetType: HostPacketType.USER_CONNECTED,
-                    user: clients[2].ownUser,
+                    user: clients[2].user,
                 },
             },
             {
@@ -185,7 +185,7 @@ describe("Four peers", () => {
                 to: clientPeerIds[2],
                 data: {
                     packetType: HostPacketType.USER_CONNECTED,
-                    user: clients[2].ownUser,
+                    user: clients[2].user,
                 },
             },
         ]);

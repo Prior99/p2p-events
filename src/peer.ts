@@ -25,44 +25,133 @@ import { v4 as uuid } from "uuid";
 import { debug } from "./utils";
 import { libraryVersion } from "../generated/version";
 
+/**
+ * A handler called when a specific message is received.
+ * @param payload The payload transmitted in the message.
+ * @param userId The id of the user that sent this message.
+ * @param createdDate The date at which the message was sent.
+ */
 export type MessageHandler<TPayload> = (payload: TPayload, userId: string, createdDate: Date) => void;
+
+/**
+ * Can be called to unsubscribe from a subscribed message type.
+ */
 export type Unsubscribe = () => void;
 
+/**
+ * Can be used to perform additional actions on a sent message.
+ */
 export interface SentMessageHandle<TMessageType extends string | number, TPayload> {
+    /**
+     * The message that was sent.
+     */
     message: Message<TMessageType, TPayload>;
+    /**
+     * Will return a promise that resolves once the host has received the message.
+     */
     waitForHost: () => Promise<void>;
+    /**
+     * Will return a promise that resolves once all clients (or all targeted clients) have received the message.
+     */
     waitForAll: () => Promise<void>;
 }
 
+/**
+ * Created by `Peer.message()`, this message factory provides actions on a registered message type.
+ */
 export interface MessageFactory<TMessageType extends string | number, TPayload> {
+    /**
+     * Subscribe to received instances of these messages.
+     * @param handler The handler that will be called once a message of this type is received.
+     */
     subscribe: (handler: MessageHandler<TPayload>) => Unsubscribe;
+    /**
+     * Send an instance of this message to all other peers or a selection of peers.
+     * @param payload The payload of the message to send.
+     * @param targets An optional selection of targets to send the message to. If omitted, message will be
+     *     sent to all targets.
+     */
     send: (payload: TPayload, targets?: string | string[]) => SentMessageHandle<TMessageType, TPayload>;
 }
 
+/**
+ * State (such as subscriptions) kept by the peer about existing message factories.
+ */
 export interface MessageFactoryState<TMessageType, TPayload> {
+    /**
+     * The message type that this state is referring to.
+     */
     messageType: TMessageType;
+    /**
+     * Subscriptions on this peer for this message type.
+     */
     subscriptions: Set<MessageHandler<TPayload>>;
 }
 
+/**
+ * State kept about a specific sent message.
+ */
 export interface SentMessageState<TMessageType extends string | number, TPayload> {
+    /**
+     * The message that was sent.
+     */
     message: Message<TMessageType, TPayload>;
+    /**
+     * Listeners that need to be invoked once the host has acknowledged the message.
+     */
     waitForHostListeners: Set<PromiseListener<[void], [Error]>>;
+    /**
+     * Listeners that need to be invoked once all (targeted) peers have acknowledged the message.
+     */
     waitForAllListeners: Set<PromiseListener<[void], [Error]>>;
+    /**
+     * A timeout which will mark the message as timed out if fired.
+     * The timeout will be cleared if the message is acknowledged by all (targeted) peers.
+     */
     timeout: ReturnType<typeof setTimeout>;
 }
 
+/**
+ * Options for initializing a peer.
+ */
 export interface PeerOptions<TUser extends User> {
+    /**
+     * Time in seconds after which a message is treated as timed out. Defaults to 5 seconds.
+     */
     timeout?: number;
+    /**
+     * The version of this application's "protocol" that is used.
+     * If the application is introducing breaking changes, this version should be changed.
+     * If a client attempts to connect to a host and this version differs, the connection will be aborted.
+     */
     applicationProtocolVersion: string;
+    /**
+     * Initial properties for the user associated with this peer.
+     */
     user: Omit<TUser, "id">;
+    /**
+     * Optional options that will be handed to PeerJS when initialized.
+     */
     peerJsOptions?: PeerJS.PeerJSOption;
 }
 
+/**
+ * The result of opening the connection on a peer.
+ */
 export interface PeerOpenResult {
+    /**
+     * The internal peer id of this peer. Might be relevant for inviting other peers into this network.
+     */
     peerId: string;
+    /**
+     * The user id of the user associated with this peer.
+     */
     userId: string;
 }
 
+/**
+ * Default options used when initializing a peer.
+ */
 export const peerDefaultOptions = {
     timeout: 5,
 };
@@ -77,6 +166,9 @@ export type PeerEventArgumentMapping<TMessageType extends string | number, TUser
     error: [Error, ErrorReason];
 };
 
+/**
+ * An event emitted by a peer.
+ */
 export type PeerEvent<TMessageType extends string | number, TUser extends User> = keyof PeerEventArgumentMapping<
     TMessageType,
     TUser
@@ -88,24 +180,66 @@ export type PeerEventArguments<
     TUser extends User
 > = PeerEventArgumentMapping<TMessageType, TUser>[TEvent];
 
+/**
+ * A listener for an event emitted by a peer.
+ */
 export type PeerEventListener<
     TMessageType extends string | number,
     TEvent extends PeerEvent<TMessageType, TUser>,
     TUser extends User
 > = (...args: PeerEventArguments<TMessageType, TEvent, TUser>) => void;
 
+/**
+ * A participant in the network. Implemented by either `Client` or `Host`.
+ */
 export abstract class Peer<TUser extends User, TMessageType extends string | number> {
+    /**
+     * The unique id of the user associated with this peer.
+     */
     public userId = uuid();
+    /**
+     * The options with which this peer was initialized.
+     */
     public readonly options: PeerOptions<TUser> & typeof peerDefaultOptions;
+    /**
+     * The peer id of the host for this network.
+     * Can be used to invite other peers into the network.
+     */
     public abstract hostConnectionId: string | undefined;
+    /**
+     * The mode for this peer. Determines whether it is disconnected, connecting or connected as a client or host.
+     */
     public networkMode = NetworkMode.DISCONNECTED;
 
+    /**
+     * Manages the synchronized state for all users within this network.
+     */
     protected userManager = new Users<TUser>();
+    /**
+     * The underlying PeerJS peer.
+     */
     protected peer?: PeerJS;
-    protected messageFactoryStates = new Map<TMessageType, MessageFactoryState<TMessageType, any>>(); // eslint-disable-line
-    protected sentMessageStates = new Map<string, SentMessageState<TMessageType, any>>(); // eslint-disable-line
+    /**
+     * States (such as subscriptions) kept about registered message types.
+     */
+    protected messageFactoryStates = new Map<TMessageType, MessageFactoryState<TMessageType, unknown>>();
+    /**
+     * States (such as listeners) kept about sent messages.
+     */
+    protected sentMessageStates = new Map<string, SentMessageState<TMessageType, unknown>>();
+    /**
+     * A set of message serial id's that should be ignored.
+     * If any packet referencing a message with one of these serial ids is received, it is ignored.
+     */
     protected ignoredSerialIds = new Set<string>();
+    /**
+     * The internal sequence number used for responding to ping packets. This integer is increased by
+     * one for every responded pong packet and is used to determine packet loss.
+     */
     protected sequenceNumber = 0;
+    /**
+     * Event listeners for different events registered on this peer.
+     */
     protected eventListeners: {
         [TKey in PeerEvent<TMessageType, TUser>]: Set<PeerEventListener<TMessageType, TKey, TUser>>;
     } = {
@@ -118,6 +252,10 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         error: new Set(),
     };
 
+    /**
+     * Create a new peer.
+     * @param inputOptions Options used for configuring this peer.
+     */
     constructor(inputOptions: PeerOptions<TUser>) {
         this.userManager.addUser({
             ...inputOptions.user,
@@ -129,34 +267,62 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         };
     }
 
+    /**
+     * Will be `true` if this peer is currently connected to the network as either host
+     * or client.
+     */
     public get isConnected(): boolean {
         return this.isHost || this.isClient;
     }
 
+    /**
+     * Will be `true` while a peer's `open()` method has been called but the connection
+     * is not yet established. This can be the case while the peerjs handshake is still
+     * being performed or the handshake with the host is still in progress.
+     */
     public get isConnecting(): boolean {
         return this.networkMode === NetworkMode.CONNECTING;
     }
 
+    /**
+     * Will be `true` if this peer is not connected. This can be the case if a peer was
+     * connected but `close()` has be called or if a peer wasn't connected yet.
+     */
     public get isDisconnected(): boolean {
         return this.networkMode === NetworkMode.DISCONNECTED;
     }
 
+    /**
+     * Will be `true` if this peer is connected to the network as a client.
+     */
     public get isClient(): boolean {
         return this.networkMode === NetworkMode.CLIENT;
     }
 
+    /**
+     * Will be `true` if this peer is the network's host.
+     */
     public get isHost(): boolean {
         return this.networkMode === NetworkMode.HOST;
     }
 
-    public get ownUser(): TUser {
+    /**
+     * Will return this user instace associated with this peer.
+     */
+    public get user(): TUser {
         return this.userManager.getUser(this.userId)!;
     }
 
+    /**
+     * Will return a copy of the currently connected users.
+     */
     public get users(): TUser[] {
         return this.userManager.allUsers;
     }
 
+    /**
+     * Returns a map of all ping informations (lost packets, round trip time, etc.) for each user.
+     */
     public get pingInfos(): Map<string, PingInfo> {
         const map = new Map<string, PingInfo>();
         for (const { user, lastPingDate, lostPingPackets: lostPingPackets, roundTripTime } of this.userManager.all) {
@@ -165,6 +331,19 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         return map;
     }
 
+    /**
+     * Register a new event listener.
+     * @param eventName The name of the event to listen for. Must be one of:
+     *  * `"message"`: Whenever any message is received.
+     *  * `"userconnect"`: Whenever any user connected.
+     *  * `"userdisconnect"`: Whenever any disconnected or timed out.
+     *  * `"pinginfo"`: Whenever the ping information for all peers were refreshed by the host.
+     *  * `"connect"`: When this peer has successfully connected to the host.
+     *  * `"userupdate"`: When any user on the network changed their information.
+     *  * `"error"`: When any error was encountered.
+     * @param handler The handler that shall be called if the specified event occurs. The arguments
+     *    vary depending on the event's type.
+     */
     public on<TPeerEvent extends PeerEvent<TMessageType, TUser>>(
         eventName: TPeerEvent,
         handler: (...args: PeerEventArguments<TMessageType, TPeerEvent, TUser>) => void,
@@ -172,8 +351,16 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         this.eventListeners[eventName].add(handler);
     }
 
+    /**
+     * The same as `Peer.on`.
+     */
     public addEventListener = this.on;
 
+    /**
+     * Remove a listener that was previously registered for an event.
+     * @param eventName Name of the event to remove this listener for.
+     * @param handler The handler to remove.
+     */
     public removeEventListener<TPeerEvent extends PeerEvent<TMessageType, TUser>>(
         eventName: TPeerEvent,
         handler: (...args: PeerEventArguments<TMessageType, TPeerEvent, TUser>) => void,
@@ -181,6 +368,11 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         this.eventListeners[eventName].delete(handler);
     }
 
+    /**
+     * Used to emit an event to all registered listeners.
+     * @param eventName The name of the event to emit.
+     * @param args The arguments to pass to the listeners.
+     */
     protected emitEvent<TPeerEvent extends PeerEvent<TMessageType, TUser>>(
         eventName: TPeerEvent,
         ...args: PeerEventArguments<TMessageType, TPeerEvent, TUser>
@@ -189,6 +381,10 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         listeners.forEach((listener) => listener(...args));
     }
 
+    /**
+     * Update the own user on the network.
+     * @param user A patch for the own user to change.
+     */
     public updateUser(user: Omit<Partial<TUser>, "id">): void {
         this.sendClientPacketToHost({
             packetType: ClientPacketType.UPDATE_USER,
@@ -196,12 +392,19 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         });
     }
 
+    /**
+     * Register a new message on this peer.
+     * Will return a factory on which the application can subscribe for message received with this type
+     * or to send these messages.
+     * @param messageType The type for this message.
+     * @returns A factory that can be used subscribe to this kind of message or to send them.
+     */
     public message<TPayload>(messageType: TMessageType): MessageFactory<TMessageType, TPayload> {
         const messageFactoryState: MessageFactoryState<TMessageType, TPayload> = {
             messageType,
             subscriptions: new Set(),
         };
-        this.messageFactoryStates.set(messageType, messageFactoryState);
+        this.messageFactoryStates.set(messageType, messageFactoryState as MessageFactoryState<TMessageType, unknown>);
         const messageFactory: MessageFactory<TMessageType, TPayload> = {
             subscribe: (handler: MessageHandler<TPayload>) => {
                 messageFactoryState.subscriptions.add(handler);
@@ -246,6 +449,11 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         return messageFactory;
     }
 
+    /**
+     * Used to throw an error by emitting it as an event and then throwing it and hence terminating
+     * execution.
+     * @param error The error to throw and emit.
+     */
     protected throwError(error: Error): never {
         const errorReason =
             error instanceof InternalError
@@ -259,8 +467,17 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         throw error;
     }
 
+    /**
+     * Needs to be overridden by the implementing classes.
+     * Send an individual packet to the host of the network.
+     * @param packet The packet to send.
+     */
     protected abstract sendClientPacketToHost<TPayload>(packet: ClientPacket<TMessageType, TUser, TPayload>): void;
 
+    /**
+     * Called when a packet is received from the host.
+     * @param packet The packet that was received.
+     */
     protected handleHostPacket<TPayload>(packet: HostPacket<TMessageType, TUser, TPayload>): void {
         debug("Received packet from host of type %s: %O", packet.packetType, packet);
         switch (packet.packetType) {
@@ -332,14 +549,22 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
             case HostPacketType.PING_INFO: {
                 const map = new Map<string, PingInfo>();
                 for (const { userId, ...pingInfo } of packet.pingInfos) {
-                    this.userManager.updatePingInfo(userId, pingInfo);
+                    try {
+                        this.userManager.updatePingInfo(userId, pingInfo);
+                    } catch (err) {
+                        this.throwError(err);
+                    }
                     map.set(userId, pingInfo);
                 }
                 this.emitEvent("pinginfo", map);
                 break;
             }
             case HostPacketType.UPDATE_USER:
-                this.userManager.updateUser(packet.user.id, packet.user);
+                try {
+                    this.userManager.updateUser(packet.user.id, packet.user);
+                } catch (err) {
+                    this.throwError(err);
+                }
                 this.emitEvent("userupdate", this.userManager.getUser(packet.user.id)!);
                 break;
             case HostPacketType.INCOMPATIBLE:
@@ -350,6 +575,9 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         }
     }
 
+    /**
+     * The application and library version that this peer is using.
+     */
     public get versions(): Versions {
         return {
             application: this.options.applicationProtocolVersion,
@@ -357,6 +585,9 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         };
     }
 
+    /**
+     * Terminate the connection.
+     */
     public close(): void {
         if (!this.peer) {
             this.throwError(new InternalError("Can't close peer. Not connected."));
@@ -368,6 +599,10 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         this.networkMode = NetworkMode.DISCONNECTED;
     }
 
+    /**
+     * Create the initial PeerJS connection.
+     * @returns A promise that will resolve once the peer is created and ready to connect.
+     */
     protected async createLocalPeer(): Promise<PeerOpenResult> {
         this.networkMode = NetworkMode.CONNECTING;
         await new Promise((resolve) => {
@@ -384,6 +619,11 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         };
     }
 
+    /**
+     * Send an individual host packet to a specific peer. 
+     * @param connection The peer's connection to send the packet to.
+     * @param packet The packet to send.
+     */
     protected sendHostPacketToPeer<TPayload>(
         connection: PeerJS.DataConnection,
         packet: HostPacket<TMessageType, TUser, TPayload> | ClientPacket<TMessageType, TUser, TPayload>,
@@ -392,6 +632,13 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         connection.send(packet);
     }
 
+    /**
+     * Send an individual message packet to the host which will then relay it.
+     * @param messageType The type of the message to send.
+     * @param payload The message's payload.
+     * @param targets An optional subset of target clients to relay the message to.
+     * @returns The message as sent to the host.
+     */
     protected sendMessageToHost<TPayload>(
         messageType: TMessageType,
         payload: TPayload,
@@ -414,6 +661,10 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         return message;
     }
 
+    /**
+     * Add a serial id to the list of ignored serial ids.
+     * @param serialId The serial id to ignore.
+     */
     public ignoreSerialId(serialId: string): void {
         this.ignoredSerialIds.add(serialId);
     }

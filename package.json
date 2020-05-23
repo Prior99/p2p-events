@@ -9,7 +9,9 @@
         "build": "tsc -p .",
         "pretest": "yarn generate-version",
         "test": "jest",
-        "lint": "eslint --max-warnings 0 src/**/*.ts test/**/*.ts"
+        "lint": "eslint --max-warnings 0 src/**/*.ts test/**/*.ts",
+        "predocs": "yarn generate-version",
+        "docs": "typedoc --mode file --out docs/ --exclude '**/test-*.ts,**/report-viewer/**/*' src/"
     },
     "eslintConfig": {
         "extends": "./eslint-defaults.json"
@@ -59,6 +61,7 @@
         "jest": "^26.0.1",
         "prettier": "^2.0.5",
         "ts-jest": "^26.0.0",
+        "typedoc": "^0.17.7",
         "typescript": "^3.9.3"
     }
 }

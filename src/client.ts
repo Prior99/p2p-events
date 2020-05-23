@@ -59,7 +59,7 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
                         application: this.options.applicationProtocolVersion,
                         p2pNetwork: libraryVersion,
                     },
-                    user: this.ownUser,
+                    user: this.user,
                 });
                 resolve();
             });

@@ -55,7 +55,7 @@ async function main(): Promise<void> {
     ReactDOM.render(
         <App
             todos={todos}
-            user={peer.ownUser}
+            user={peer.user}
             users={users}
             onTodoCheck={(id) => checkTodo.send({ id })}
             onTodoDelete={(id) => deleteTodo.send({ id })}

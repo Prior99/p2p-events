@@ -1,0 +1,68 @@
+image: node:12
+
+stages:
+  - build
+  - deploy
+
+cache:
+  paths:
+    - node_modules/
+
+build:
+  before_script:
+    - yarn
+  stage: build
+  script:
+    - yarn build
+    - yarn docs
+    - cd example 
+    - yarn
+    - yarn build
+  artifacts:
+    paths:
+      - dist/
+      - docs/
+      - src/
+      - LICENSE
+      - package.json
+      - README.md
+      - yarn.lock
+      - example/dist
+      - example/src
+      - example/index.html
+      - example/package.json
+      - example/yarn.lock
+
+test:
+  before_script:
+    - yarn
+  stage: test
+  script:
+    - yarn test
+  dependencies:
+    - build
+  artifacts:
+    paths:
+      - coverage/
+
+lint:
+  before_script:
+    - yarn
+  stage: test
+  script:
+    - yarn lint
+
+pages:
+  stage: deploy
+  script:
+    - mv docs public
+    - mv coverage public/coverage
+    - mv example public/example
+  dependencies:
+    - test
+    - build
+  artifacts:
+    paths:
+      - public
+  only:
+    - master
