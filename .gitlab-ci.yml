@@ -59,7 +59,6 @@ pages:
     - mv coverage public/coverage
     - mv example public/example
   dependencies:
-    - test
     - build
   artifacts:
     paths:
