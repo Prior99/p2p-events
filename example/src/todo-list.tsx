@@ -1,4 +1,5 @@
 import * as React from "react";
+import { observer } from "mobx-react";
 import { TodoListItem } from "./todo-list-item";
 import { Todo } from "./types";
 
@@ -8,17 +9,21 @@ export interface TodoListProps {
     onDelete: (id: number) => void;
 }
 
-export function TodoList({ todos, onCheck, onDelete }: TodoListProps): JSX.Element {
-    return (
-        <ol>
-            {todos.map((todo) => (
-                <TodoListItem
-                    todo={todo}
-                    key={todo.id}
-                    onCheck={() => onCheck(todo.id)}
-                    onDelete={() => onDelete(todo.id)}
-                />
-            ))}
-        </ol>
-    );
+@observer
+export class TodoList extends React.Component<TodoListProps> {
+    public render(): JSX.Element {
+        const { todos, onCheck, onDelete } = this.props;
+        return (
+            <ol>
+                {todos.map((todo) => (
+                    <TodoListItem
+                        todo={todo}
+                        key={todo.id}
+                        onCheck={() => onCheck(todo.id)}
+                        onDelete={() => onDelete(todo.id)}
+                    />
+                ))}
+            </ol>
+        );
+    }
 }

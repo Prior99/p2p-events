@@ -1,4 +1,4 @@
-import { User } from "p2p-events";
+import { User } from "p2p-network";
 
 export interface Todo {
     id: number;
@@ -10,11 +10,16 @@ export const enum Messages {
     ADD_TODO = "add todo",
     DELETE_TODO = "delete todo",
     CHECK_TODO = "check todo",
+    CURRENT_STATE = "current state",
 }
 
 export interface AddTodo {
     id: number;
     title: string;
+}
+
+export interface CurrentState {
+    todos: Todo[];
 }
 
 export interface DeleteTodo {

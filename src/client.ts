@@ -12,9 +12,9 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
 
     public hostConnectionId: string | undefined;
 
-    protected sendClientPacket<TPayload>(message: ClientPacket<TMessageType, TUser, TPayload>): void {
+    protected sendClientPacketToHost<TPayload>(message: ClientPacket<TMessageType, TUser, TPayload>): void {
         if (!this.connection) { throw new Error("Can't send message: Connection is not open."); }
-        this.sendToPeer(this.connection, message);
+        this.sendHostPacketToPeer(this.connection, message);
     }
 
     public async open(remotePeerId: string): Promise<ClientOpenResult> {
@@ -23,7 +23,7 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
             this.connection = this.peer!.connect(remotePeerId, { reliable: true });
             this.connection.on("open", () => {
                 this.connection!.on("data", data => this.handleHostPacket(data));
-                this.sendClientPacket({
+                this.sendClientPacketToHost({
                     packetType: ClientPacketType.HELLO,
                     applicationProtocolVersion: this.options.applicationProtocolVersion,
                     protocolVersion: libraryVersion,

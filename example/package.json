@@ -1,5 +1,5 @@
 {
-    "name": "p2p-events-example",
+    "name": "p2p-network-example",
     "version": "1.0.0",
     "main": "index.js",
     "scripts": {
@@ -25,7 +25,9 @@
         }
     },
     "dependencies": {
-        "p2p-events": "file:..",
+        "mobx": "^5.15.4",
+        "mobx-react": "^6.2.2",
+        "p2p-network": "file:..",
         "react": "^16.13.1",
         "react-dom": "^16.13.1"
     },

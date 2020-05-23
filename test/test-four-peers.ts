@@ -240,6 +240,87 @@ describe("Four peers", () => {
                 ));
         });
 
+        describe("client sending the message to specific client", () => {
+            let sendResult: SentMessageHandle<MockMessageType, MockPayload>;
+
+            beforeEach(async () => {
+                sendResult = clientMessageFactories[0].send({ test: "something" }, clients[1].userId);
+                await sendResult.waitForAll();
+            });
+
+            it("didn't the listeners that weren't the target", () =>
+                [spyMessageHost, spyMessageClients[0], spyMessageClients[2]].forEach((spy) =>
+                    expect(spy).not.toHaveBeenCalled(),
+                ));
+
+            it("called the listeners on the target client", () =>
+                [spyMessageClients[1]].forEach((spy) =>
+                    expect(spy).toHaveBeenCalledWith({ test: "something" }, clients[0].userId, expect.any(Date)),
+                ));
+
+            it("has sent the expected messages", () => {
+                expect(getHistory()).toEqual([
+                    {
+                        from: clientPeerIds[0],
+                        to: hostPeerId,
+                        data: {
+                            packetType: ClientPacketType.MESSAGE,
+                            message: {
+                                createdDate: expect.any(Number),
+                                messageType: MockMessageType.MOCK_MESSAGE,
+                                originUserId: clients[0].userId,
+                                serialId: sendResult.message.serialId,
+                                payload: {
+                                    test: "something",
+                                },
+                            },
+                            targets: [clients[1].userId]
+                        },
+                    },
+                    {
+                        from: hostPeerId,
+                        to: clientPeerIds[0],
+                        data: {
+                            packetType: HostPacketType.ACKNOWLEDGED_BY_HOST,
+                            serialId: sendResult.message.serialId,
+                        },
+                    },
+                    {
+                        from: hostPeerId,
+                        to: clientPeerIds[1],
+                        data: {
+                            packetType: HostPacketType.RELAYED_MESSAGE,
+                            message: {
+                                createdDate: expect.any(Number),
+                                messageType: MockMessageType.MOCK_MESSAGE,
+                                originUserId: clients[0].userId,
+                                serialId: sendResult.message.serialId,
+                                payload: {
+                                    test: "something",
+                                },
+                            },
+                        },
+                    },
+                    {
+                        from: clientPeerIds[1],
+                        to: hostPeerId,
+                        data: {
+                            packetType: ClientPacketType.ACKNOWLEDGE,
+                            serialId: sendResult.message.serialId,
+                        },
+                    },
+                    {
+                        from: hostPeerId,
+                        to: clientPeerIds[0],
+                        data: {
+                            packetType: HostPacketType.ACKNOWLEDGED_BY_ALL,
+                            serialId: sendResult.message.serialId,
+                        },
+                    },
+                ]);
+            });
+        });
+
         describe("client sending the message to host", () => {
             let sendResult: SentMessageHandle<MockMessageType, MockPayload>;
 
@@ -249,7 +330,11 @@ describe("Four peers", () => {
             });
 
             it("called the listener on the host", () =>
-                expect(spyMessageHost).toHaveBeenCalledWith({ test: "something" }, clients[0].userId, expect.any(Date)));
+                expect(spyMessageHost).toHaveBeenCalledWith(
+                    { test: "something" },
+                    clients[0].userId,
+                    expect.any(Date),
+                ));
 
             it("called the listeners on the clients", () =>
                 spyMessageClients.forEach((spy) =>

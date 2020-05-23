@@ -1,8 +1,9 @@
 import PeerJS from "peerjs";
 import { Users } from "./users";
-import { ClientPacket, HostPacket, HostPacketType, ClientPacketType, Message, PingInfo, User } from "./types";
+import { ClientPacket, HostPacket, HostPacketType, ClientPacketType, Message, PingInfo, User, NetworkMode } from "./types";
 import { unreachable, PromiseListener, resolvePromiseListeners, rejectPromiseListeners } from "./utils";
 import { v4 as uuid } from "uuid";
+import { debug } from "./utils";
 
 export type MessageHandler<TPayload> = (payload: TPayload, userId: string, createdDate: Date) => void;
 export type Unsubscribe = () => void;
@@ -15,7 +16,7 @@ export interface SentMessageHandle<TMessageType extends string | number, TPayloa
 
 export interface MessageFactory<TMessageType extends string | number, TPayload> {
     subscribe: (handler: MessageHandler<TPayload>) => Unsubscribe;
-    send: (payload: TPayload) => SentMessageHandle<TMessageType, TPayload>;
+    send: (payload: TPayload, targets?: string | string[]) => SentMessageHandle<TMessageType, TPayload>;
 }
 
 export interface MessageFactoryState<TMessageType, TPayload> {
@@ -34,6 +35,7 @@ export interface PeerOptions<TUser extends User> {
     timeout?: number;
     applicationProtocolVersion: string;
     user: Omit<TUser, "id">;
+    peerJsOptions?: PeerJS.PeerJSOption;
 }
 
 export interface PeerOpenResult {
@@ -70,9 +72,9 @@ export type PeerEventListener<
 
 export abstract class Peer<TUser extends User, TMessageType extends string | number> {
     public userId = uuid();
-
-    public readonly options: Required<PeerOptions<TUser>>;
+    public readonly options: PeerOptions<TUser> & typeof peerDefaultOptions;
     public abstract hostConnectionId: string | undefined;
+    public networkMode = NetworkMode.DISCONNECTED;
 
     protected userManager = new Users<TUser>();
     protected peer?: PeerJS;
@@ -100,6 +102,26 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
             ...peerDefaultOptions,
             ...inputOptions,
         };
+    }
+
+    public get isConnected(): boolean {
+        return this.isHost || this.isClient;
+    }
+
+    public get isConnecting(): boolean {
+        return this.networkMode === NetworkMode.CONNECTING;
+    }
+
+    public get isDisconnected(): boolean {
+        return this.networkMode === NetworkMode.DISCONNECTED;
+    }
+
+    public get isClient(): boolean {
+        return this.networkMode === NetworkMode.CLIENT;
+    }
+
+    public get isHost(): boolean {
+        return this.networkMode === NetworkMode.HOST;
     }
 
     public get ownUser(): TUser {
@@ -143,7 +165,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
     }
 
     public updateUser(user: Omit<Partial<TUser>, "id">): void {
-        this.sendClientPacket({
+        this.sendClientPacketToHost({
             packetType: ClientPacketType.UPDATE_USER,
             user,
         });
@@ -160,8 +182,12 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 messageFactoryState.subscriptions.add(handler);
                 return () => messageFactoryState.subscriptions.delete(handler);
             },
-            send: (payload: TPayload) => {
-                const message = this.sendMessage(messageType, payload);
+            send: (payload: TPayload, targets?: string | string[]) => {
+                const message = this.sendMessageToHost(
+                    messageType,
+                    payload,
+                    typeof targets === "string" ? [targets] : targets,
+                );
                 const sentMessageState: SentMessageState<TMessageType, TPayload> = {
                     message,
                     waitForHostListeners: new Set(),
@@ -195,9 +221,10 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         return messageFactory;
     }
 
-    protected abstract sendClientPacket<TPayload>(packet: ClientPacket<TMessageType, TUser, TPayload>): void;
+    protected abstract sendClientPacketToHost<TPayload>(packet: ClientPacket<TMessageType, TUser, TPayload>): void;
 
     protected handleHostPacket<TPayload>(packet: HostPacket<TMessageType, TUser, TPayload>): void {
+        debug("Received packet from host of type %s: %O", packet.packetType, packet);
         switch (packet.packetType) {
             case HostPacketType.WELCOME:
                 this.userManager.initialize(packet.users);
@@ -212,7 +239,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 this.emitEvent("userdisconnect", packet.userId);
                 break;
             case HostPacketType.PING:
-                this.sendClientPacket({
+                this.sendClientPacketToHost({
                     packetType: ClientPacketType.PONG,
                     initiationDate: packet.initiationDate,
                     sequenceNumber: ++this.sequenceNumber,
@@ -223,7 +250,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 if (this.ignoredSerialIds.has(message.serialId)) {
                     return;
                 }
-                this.sendClientPacket({
+                this.sendClientPacketToHost({
                     packetType: ClientPacketType.ACKNOWLEDGE,
                     serialId: message.serialId,
                 });
@@ -288,34 +315,42 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         if (!this.peer) {
             throw new Error("Can't close peer. Not connected.");
         }
-        this.sendClientPacket({
+        this.sendClientPacketToHost({
             packetType: ClientPacketType.DISCONNECT,
         });
         this.peer.destroy();
+        this.networkMode = NetworkMode.DISCONNECTED;
     }
 
     protected async createLocalPeer(): Promise<PeerOpenResult> {
+        this.networkMode = NetworkMode.CONNECTING;
         await new Promise((resolve) => {
-            this.peer = new PeerJS(null as any); // eslint-disable-line
+            this.peer = new PeerJS(null as any, this.options.peerJsOptions); // eslint-disable-line
             this.peer.on("open", () => resolve());
         });
         if (!this.peer) {
             throw new Error("Connection id could not be determined.");
         }
+        this.networkMode = NetworkMode.CLIENT;
         return {
             peerId: this.peer.id,
             userId: this.userId,
         };
     }
 
-    protected sendToPeer<TPayload>(
+    protected sendHostPacketToPeer<TPayload>(
         connection: PeerJS.DataConnection,
-        message: HostPacket<TMessageType, TUser, TPayload> | ClientPacket<TMessageType, TUser, TPayload>,
+        packet: HostPacket<TMessageType, TUser, TPayload> | ClientPacket<TMessageType, TUser, TPayload>,
     ): void {
-        connection.send(message);
+        debug("Sending packet of type %s: %O", packet.packetType, packet);
+        connection.send(packet);
     }
 
-    protected sendMessage<TPayload>(messageType: TMessageType, payload: TPayload): Message<TMessageType, TPayload> {
+    protected sendMessageToHost<TPayload>(
+        messageType: TMessageType,
+        payload: TPayload,
+        targets?: string[],
+    ): Message<TMessageType, TPayload> {
         const message: Message<TMessageType, TPayload> = {
             messageType,
             originUserId: this.userId,
@@ -324,9 +359,10 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
             serialId: uuid(),
         };
         setTimeout(() =>
-            this.sendClientPacket({
+            this.sendClientPacketToHost({
                 packetType: ClientPacketType.MESSAGE,
                 message: message,
+                targets,
             }),
         );
         return message;

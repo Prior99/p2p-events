@@ -106,6 +106,7 @@ export interface ClientPacketPong {
 export interface ClientPacketMessage<TMessageType extends string | number, TPayload> {
     packetType: ClientPacketType.MESSAGE;
     message: Message<TMessageType, TPayload>;
+    targets?: string[];
 }
 
 export interface ClientPacketAcknowledge {

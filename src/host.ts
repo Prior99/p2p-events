@@ -1,5 +1,14 @@
 import PeerJS from "peerjs";
-import { User, HostPacket, ClientPacket, ClientPacketType, HostPacketType, Message } from "./types";
+import { debug } from "./utils";
+import {
+    User,
+    HostPacket,
+    ClientPacket,
+    ClientPacketType,
+    HostPacketType,
+    Message,
+    NetworkMode,
+} from "./types";
 import { Peer, PeerOpenResult, PeerOptions, peerDefaultOptions } from "./peer";
 import { unreachable } from "./utils";
 import { libraryVersion } from "../generated/version";
@@ -12,6 +21,7 @@ export interface ConnectionMeta {
 export interface RelayedMessageState<TMessageType extends string | number, TPayload> {
     message: Message<TMessageType, TPayload>;
     acknowledgedBy: Set<string>;
+    targets?: string[];
 }
 
 export interface HostOpenResult extends PeerOpenResult {
@@ -19,11 +29,11 @@ export interface HostOpenResult extends PeerOpenResult {
 }
 
 export interface HostOptions<TUser extends User> extends PeerOptions<TUser> {
-    pingInterval?: number;
+    pingInterval?: number | undefined;
 }
 
 export class Host<TUser extends User, TMessageType extends string | number> extends Peer<TUser, TMessageType> {
-    public readonly options: Required<HostOptions<TUser>>;
+    public readonly options: HostOptions<TUser> & typeof peerDefaultOptions;
 
     protected connections = new Map<string, PeerJS.DataConnection>();
     protected connectionMetas = new Map<string, ConnectionMeta>([
@@ -41,7 +51,6 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         super(inputOptions);
         this.options = {
             ...peerDefaultOptions,
-            pingInterval: 0,
             ...inputOptions,
         };
     }
@@ -71,7 +80,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
 
     protected sendHostPacketToAll<TPayload>(packet: HostPacket<TMessageType, TUser, TPayload>): void {
         for (const connection of this.connections.values()) {
-            this.sendToPeer(connection, packet);
+            this.sendHostPacketToPeer(connection, packet);
         }
         this.handleHostPacket(packet);
     }
@@ -85,10 +94,11 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         if (!connection) {
             throw new Error(`Can't send message to unknown user with id "${userId}".`);
         }
-        this.sendToPeer(connection, packet);
+        this.sendHostPacketToPeer(connection, packet);
     }
 
     protected handleClientPacket<TPayload>(userId: string, packet: ClientPacket<TMessageType, TUser, TPayload>): void {
+        debug("Received packet from client of type %s: %O", packet.packetType, packet);
         const connectionMeta = this.connectionMetas.get(userId);
         if (!connectionMeta) {
             throw new Error(`Connection meta for user "${userId}" missing.`);
@@ -105,36 +115,46 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
             case ClientPacketType.PONG:
                 this.userManager.updatePingInfo(userId, {
                     lostPingMessages: packet.sequenceNumber - connectionMeta.lastSequenceNumber - 1,
-                    roundTripTime: Date.now() - packet.initiationDate,
+                    roundTripTime: (Date.now() - packet.initiationDate) / 1000,
                     lastPingDate: Date.now(),
                 });
                 break;
             case ClientPacketType.MESSAGE: {
-                const { message } = packet;
+                const { message, targets } = packet;
                 const { serialId } = message;
-                this.relayedMessageStates.set(message.serialId, { message, acknowledgedBy: new Set() });
+                this.relayedMessageStates.set(message.serialId, { message, acknowledgedBy: new Set(), targets });
                 this.sendHostPacketToUser(userId, {
                     packetType: HostPacketType.ACKNOWLEDGED_BY_HOST,
                     serialId,
                 });
-                this.sendHostPacketToAll({
-                    packetType: HostPacketType.RELAYED_MESSAGE,
+                const packetToSend = {
+                    packetType: HostPacketType.RELAYED_MESSAGE as const,
                     message,
-                });
+                };
+                if (targets) {
+                    targets.forEach((target) => {
+                        this.sendHostPacketToUser(target, packetToSend);
+                    });
+                } else {
+                    this.sendHostPacketToAll(packetToSend);
+                }
                 break;
             }
             case ClientPacketType.ACKNOWLEDGE: {
                 const { serialId } = packet;
-                const relatedMessageState = this.relayedMessageStates.get(serialId);
-                if (!relatedMessageState) {
+                const relayedMessageState = this.relayedMessageStates.get(serialId);
+                if (!relayedMessageState) {
                     throw new Error(`User "${userId}" acknowledged message with unknown serial id "${serialId}".`);
                 }
-                if (relatedMessageState.acknowledgedBy.has(userId)) {
+                if (relayedMessageState.acknowledgedBy.has(userId)) {
                     throw new Error(`User "${userId}" acknowledged message with serial id "${serialId}" twice.`);
                 }
-                relatedMessageState.acknowledgedBy.add(userId);
-                if (relatedMessageState.acknowledgedBy.size === this.userManager.count) {
-                    this.sendHostPacketToUser(relatedMessageState.message.originUserId, {
+                relayedMessageState.acknowledgedBy.add(userId);
+                if (
+                    relayedMessageState.acknowledgedBy.size ===
+                    (relayedMessageState.targets?.length ?? this.userManager.count)
+                ) {
+                    this.sendHostPacketToUser(relayedMessageState.message.originUserId, {
                         packetType: HostPacketType.ACKNOWLEDGED_BY_ALL,
                         serialId,
                     });
@@ -159,7 +179,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         }
     }
 
-    protected sendClientPacket<TPayload>(packet: ClientPacket<TMessageType, TUser, TPayload>): void {
+    protected sendClientPacketToHost<TPayload>(packet: ClientPacket<TMessageType, TUser, TPayload>): void {
         this.handleClientPacket(this.userId, packet);
     }
 
@@ -174,7 +194,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                         message.applicationProtocolVersion !== this.options.applicationProtocolVersion ||
                         message.protocolVersion !== libraryVersion
                     ) {
-                        this.sendToPeer(connection, {
+                        this.sendHostPacketToPeer(connection, {
                             packetType: HostPacketType.INCOMPATIBLE,
                             applicationProtocolVersion: this.options.applicationProtocolVersion,
                             protocolVersion: libraryVersion,
@@ -182,7 +202,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                         break;
                     }
                     this.connectionMetas.set(userId, { lastSequenceNumber: 0, userId });
-                    this.sendToPeer(connection, {
+                    this.sendHostPacketToPeer(connection, {
                         packetType: HostPacketType.WELCOME,
                         users: this.userManager.all,
                     });
@@ -200,17 +220,19 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
     }
 
     public async open(): Promise<PeerOpenResult> {
+        this.networkMode = NetworkMode.CONNECTING;
         const openResult = await super.createLocalPeer();
         if (!this.peer) {
             throw new Error("PeerJS failed to initialize.");
         }
         this.peer.on("connection", (connection) => this.handleConnect(connection));
-        if (this.options.pingInterval > 0) {
+        if (this.options.pingInterval !== undefined) {
             setInterval(() => {
                 this.ping();
                 this.informPing();
-            }, this.options.pingInterval);
+            }, this.options.pingInterval * 1000);
         }
+        this.networkMode = NetworkMode.HOST;
         return openResult;
     }
 }

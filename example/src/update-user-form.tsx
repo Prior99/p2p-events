@@ -1,4 +1,6 @@
 import * as React from "react";
+import { action, computed, observable } from "mobx";
+import { observer } from "mobx-react";
 import { TodoUser } from "./types";
 
 export interface UpdateUserFormProps {
@@ -6,25 +8,32 @@ export interface UpdateUserFormProps {
     user: TodoUser;
 }
 
-export function UpdateUserForm({ onChange, user }: UpdateUserFormProps): JSX.Element {
-    const [name, setName] = React.useState<string | undefined>(undefined);
-    const handleSubmit = (evt: React.SyntheticEvent<HTMLFormElement>): void => {
-        evt.preventDefault();
-        onChange({ name });
-        setName(undefined);
-    };
-    const normalizedName = name ?? user.name;
+@observer
+export class UpdateUserForm extends React.Component<UpdateUserFormProps> {
+    @observable private formName: string | undefined;
 
-    return (
-        <form onSubmit={handleSubmit}>
-            <label>
-                Name
-                <input value={normalizedName} onChange={(evt) => setName(evt.currentTarget.value)} />
-            </label>
-            <label>
-                Change
-                <button>Okay</button>
-            </label>
-        </form>
-    );
+    @computed private get name(): string {
+        return this.formName ?? this.props.user.name;
+    }
+
+    @action.bound private handleSubmit(evt: React.SyntheticEvent<HTMLFormElement>): void {
+        evt.preventDefault();
+        this.props.onChange({ name: this.name });
+        this.formName = undefined;
+    }
+
+    public render(): JSX.Element {
+        return (
+            <form onSubmit={this.handleSubmit}>
+                <label>
+                    Name
+                    <input value={this.name} onChange={(evt) => (this.formName = evt.currentTarget.value)} />
+                </label>
+                <label>
+                    Change
+                    <button>Okay</button>
+                </label>
+            </form>
+        );
+    }
 }

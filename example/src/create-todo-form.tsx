@@ -1,26 +1,33 @@
 import * as React from "react";
+import { observer } from "mobx-react";
+import { observable, action } from "mobx";
 
 export interface CreateTodoFormProps {
     onCreate: (title: string) => void;
 }
 
-export function CreateTodoForm({ onCreate }: CreateTodoFormProps): JSX.Element {
-    const [title, setTitle] = React.useState("");
-    const handleSubmit = (evt: React.SyntheticEvent<HTMLFormElement>): void => {
+@observer
+export class CreateTodoForm extends React.Component<CreateTodoFormProps> {
+    @observable private title = "";
+
+    @action.bound private handleSubmit(evt: React.SyntheticEvent<HTMLFormElement>): void {
         evt.preventDefault();
-        onCreate(title);
-        setTitle("");
-    };
-    return (
-        <form onSubmit={handleSubmit}>
-            <label>
-                Title
-                <input value={title} onChange={(evt) => setTitle(evt.currentTarget.value)} />
-            </label>
-            <label>
-                Create
-                <button>Okay</button>
-            </label>
-        </form>
-    );
+        this.props.onCreate(this.title);
+        this.title = "";
+    }
+
+    public render(): JSX.Element {
+        return (
+            <form onSubmit={this.handleSubmit}>
+                <label>
+                    Title
+                    <input value={this.title} onChange={(evt) => (this.title = evt.currentTarget.value)} />
+                </label>
+                <label>
+                    Create
+                    <button>Okay</button>
+                </label>
+            </form>
+        );
+    }
 }

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { observer } from "mobx-react";
 import { TodoUser } from "./types";
 import { PingInfo } from "../../dist/src";
 
@@ -7,7 +8,10 @@ export interface CollaboratorListProps {
     pingInfo: Map<string, PingInfo>;
 }
 
-export function CollaboratorList({ collaborators, pingInfo }: CollaboratorListProps): JSX.Element {
+@observer
+export class CollaboratorList extends React.Component<CollaboratorListProps> {
+    public render(): JSX.Element {
+    const { collaborators, pingInfo } = this.props;
     return (
         <ul>
             {collaborators.map((user) => (
@@ -17,4 +21,5 @@ export function CollaboratorList({ collaborators, pingInfo }: CollaboratorListPr
             ))}
         </ul>
     );
+}
 }
