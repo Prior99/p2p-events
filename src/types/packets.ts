@@ -49,9 +49,9 @@ export interface HostPacketPing {
     initiationDate: number;
 }
 
-export interface HostPacketRelayedEvent<TPayload> {
+export interface HostPacketRelayedMessage<TMessageType extends string | number, TPayload> {
     packetType: HostPacketType.RELAYED_MESSAGE;
-    message: Message<TPayload>;
+    message: Message<TMessageType, TPayload>;
 }
 
 export interface HostPacketAcknowledgedByHost {
@@ -74,12 +74,12 @@ export interface HostPacketUpdateUser<TUser extends User> {
     user: Partial<TUser> & User;
 }
 
-export type HostPacket<TUser extends User, TPayload> =
+export type HostPacket<TMessageType extends string | number, TUser extends User, TPayload> =
     | HostPacketWelcome<TUser>
     | HostPacketUserConnected<TUser>
     | HostPacketUserDisconnected
     | HostPacketPing
-    | HostPacketRelayedEvent<TPayload>
+    | HostPacketRelayedMessage<TMessageType, TPayload>
     | HostPacketAcknowledgedByHost
     | HostPacketAcknowledgedByAll
     | HostPacketPingInfo
@@ -103,9 +103,9 @@ export interface ClientPacketPong {
     sequenceNumber: number;
 }
 
-export interface ClientPacketEvent<TPayload> {
+export interface ClientPacketMessage<TMessageType extends string | number, TPayload> {
     packetType: ClientPacketType.MESSAGE;
-    message: Message<TPayload>;
+    message: Message<TMessageType, TPayload>;
 }
 
 export interface ClientPacketAcknowledge {
@@ -118,10 +118,10 @@ export interface ClientPacketUpdateUser<TUser extends User> {
     user: Partial<TUser> & User;
 }
 
-export type ClientPacket<TUser extends User, TPayload> =
+export type ClientPacket<TMessageType extends string | number, TUser extends User, TPayload> =
     | ClientPacketHello<TUser>
     | ClientPacketDisconnect
     | ClientPacketPong
-    | ClientPacketEvent<TPayload>
+    | ClientPacketMessage<TMessageType, TPayload>
     | ClientPacketAcknowledge
     | ClientPacketUpdateUser<TUser>;

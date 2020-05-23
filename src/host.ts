@@ -9,8 +9,8 @@ export interface ConnectionMeta {
     lastSequenceNumber: number;
 }
 
-export interface RelayedEventManager<TPayload> {
-    event: Message<TPayload>;
+export interface RelayedMessageState<TMessageType extends string | number, TPayload> {
+    message: Message<TMessageType, TPayload>;
     acknowledgedBy: Set<string>;
 }
 
@@ -22,7 +22,7 @@ export interface HostOptions<TUser extends User> extends PeerOptions<TUser> {
     pingInterval?: number;
 }
 
-export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> {
+export class Host<TUser extends User, TMessageType extends string | number> extends Peer<TUser, TMessageType> {
     public readonly options: Required<HostOptions<TUser>>;
 
     protected connections = new Map<string, PeerJS.DataConnection>();
@@ -35,7 +35,7 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
             },
         ],
     ]);
-    protected relayedEvents = new Map<string, RelayedEventManager<any>>(); // eslint-disable-line
+    protected relayedMessageStates = new Map<string, RelayedMessageState<TMessageType, any>>(); // eslint-disable-line
 
     constructor(inputOptions: HostOptions<TUser>) {
         super(inputOptions);
@@ -46,21 +46,21 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
         };
     }
 
-    public get hostPeerId(): string | undefined {
+    public get hostConnectionId(): string | undefined {
         return this.peer?.id;
     }
 
     public ping(): void {
-        this.sendHostMessage({
+        this.sendHostPacketToAll({
             packetType: HostPacketType.PING,
             initiationDate: Date.now(),
         });
     }
 
     public informPing(): void {
-        this.sendHostMessage({
+        this.sendHostPacketToAll({
             packetType: HostPacketType.PING_INFO,
-            pingInfos: this.users.all.map(({ lastPingDate, lostPingMessages, roundTripTime, user }) => ({
+            pingInfos: this.userManager.all.map(({ lastPingDate, lostPingMessages, roundTripTime, user }) => ({
                 lastPingDate,
                 lostPingMessages,
                 roundTripTime,
@@ -69,102 +69,98 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
         });
     }
 
-    protected sendHostMessage<TPayload>(message: HostPacket<TUser, TPayload>): void {
+    protected sendHostPacketToAll<TPayload>(packet: HostPacket<TMessageType, TUser, TPayload>): void {
         for (const connection of this.connections.values()) {
-            this.sendToPeer(connection, message);
+            this.sendToPeer(connection, packet);
         }
-        this.handleHostMessage(message);
+        this.handleHostPacket(packet);
     }
 
-    protected sendToUser<TPayload>(userId: string, message: HostPacket<TUser, TPayload>): void {
+    protected sendHostPacketToUser<TPayload>(userId: string, packet: HostPacket<TMessageType, TUser, TPayload>): void {
         if (userId === this.userId) {
-            this.handleHostMessage(message);
+            this.handleHostPacket(packet);
             return;
         }
         const connection = this.connections.get(userId);
         if (!connection) {
             throw new Error(`Can't send message to unknown user with id "${userId}".`);
         }
-        this.sendToPeer(connection, message);
+        this.sendToPeer(connection, packet);
     }
 
-    protected handleClientMessage<TEventPayload>(userId: string, message: ClientPacket<TUser, TEventPayload>): void {
+    protected handleClientPacket<TPayload>(userId: string, packet: ClientPacket<TMessageType, TUser, TPayload>): void {
         const connectionMeta = this.connectionMetas.get(userId);
         if (!connectionMeta) {
-            throw new Error(`Inconsistency detected: Connection meta for user "${userId}" missing.`);
+            throw new Error(`Connection meta for user "${userId}" missing.`);
         }
-        switch (message.packetType) {
+        switch (packet.packetType) {
             case ClientPacketType.HELLO:
                 throw new Error("Received unexpected hello message from client. Connection already initialized.");
             case ClientPacketType.DISCONNECT:
-                this.sendHostMessage({
+                this.sendHostPacketToAll({
                     packetType: HostPacketType.USER_DISCONNECTED,
                     userId,
                 });
                 break;
             case ClientPacketType.PONG:
-                this.users.updatePingInfo(userId, {
-                    lostPingMessages: message.sequenceNumber - connectionMeta.lastSequenceNumber - 1,
-                    roundTripTime: Date.now() - message.initiationDate,
+                this.userManager.updatePingInfo(userId, {
+                    lostPingMessages: packet.sequenceNumber - connectionMeta.lastSequenceNumber - 1,
+                    roundTripTime: Date.now() - packet.initiationDate,
                     lastPingDate: Date.now(),
                 });
                 break;
             case ClientPacketType.MESSAGE: {
-                const { message: event } = message;
-                const { serialId } = event;
-                this.relayedEvents.set(event.serialId, { event, acknowledgedBy: new Set() });
-                this.sendToUser(userId, {
+                const { message } = packet;
+                const { serialId } = message;
+                this.relayedMessageStates.set(message.serialId, { message, acknowledgedBy: new Set() });
+                this.sendHostPacketToUser(userId, {
                     packetType: HostPacketType.ACKNOWLEDGED_BY_HOST,
                     serialId,
                 });
-                this.sendHostMessage({
+                this.sendHostPacketToAll({
                     packetType: HostPacketType.RELAYED_MESSAGE,
-                    message: event,
+                    message,
                 });
                 break;
             }
             case ClientPacketType.ACKNOWLEDGE: {
-                const { serialId } = message;
-                const relayedEvent = this.relayedEvents.get(serialId);
-                if (!relayedEvent) {
-                    throw new Error(
-                        `Inconsistency detected: User "${userId}" acknowledged event with unknown serial id "${serialId}".`,
-                    );
+                const { serialId } = packet;
+                const relatedMessageState = this.relayedMessageStates.get(serialId);
+                if (!relatedMessageState) {
+                    throw new Error(`User "${userId}" acknowledged message with unknown serial id "${serialId}".`);
                 }
-                if (relayedEvent.acknowledgedBy.has(userId)) {
-                    throw new Error(
-                        `Inconsistency detected: User "${userId}" acknowledged event with serial id "${serialId}" twice.`,
-                    );
+                if (relatedMessageState.acknowledgedBy.has(userId)) {
+                    throw new Error(`User "${userId}" acknowledged message with serial id "${serialId}" twice.`);
                 }
-                relayedEvent.acknowledgedBy.add(userId);
-                if (relayedEvent.acknowledgedBy.size === this.users.count) {
-                    this.sendToUser(relayedEvent.event.originUserId, {
+                relatedMessageState.acknowledgedBy.add(userId);
+                if (relatedMessageState.acknowledgedBy.size === this.userManager.count) {
+                    this.sendHostPacketToUser(relatedMessageState.message.originUserId, {
                         packetType: HostPacketType.ACKNOWLEDGED_BY_ALL,
                         serialId,
                     });
-                    this.relayedEvents.delete(serialId);
+                    this.relayedMessageStates.delete(serialId);
                 }
                 break;
             }
             case ClientPacketType.UPDATE_USER:
-                if (message.user.id !== undefined) {
-                    throw new Error(`Inconsistency detected: User "${userId}" can't update user id.`);
+                if (packet.user.id !== undefined) {
+                    throw new Error(`User "${userId}" can't update user id.`);
                 }
-                this.users.updateUser(userId, message.user);
+                this.userManager.updateUser(userId, packet.user);
                 break;
             default:
-                unreachable(message);
+                unreachable(packet);
         }
     }
 
-    protected sendClientMessage<TPayload>(message: ClientPacket<TUser, TPayload>): void {
-        this.handleClientMessage(this.userId, message);
+    protected sendClientPacket<TPayload>(packet: ClientPacket<TMessageType, TUser, TPayload>): void {
+        this.handleClientPacket(this.userId, packet);
     }
 
     protected handleConnect(connection: PeerJS.DataConnection): void {
         let userId: string;
         connection.on("data", (json) => {
-            const message: ClientPacket<TUser, unknown> = json;
+            const message: ClientPacket<TMessageType, TUser, unknown> = json;
             switch (message.packetType) {
                 case ClientPacketType.HELLO:
                     userId = message.user.id;
@@ -182,16 +178,16 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
                     this.connectionMetas.set(userId, { lastSequenceNumber: 0, userId });
                     this.sendToPeer(connection, {
                         packetType: HostPacketType.WELCOME,
-                        users: this.users.all,
+                        users: this.userManager.all,
                     });
                     this.connections.set(userId, connection);
-                    this.sendHostMessage({
+                    this.sendHostPacketToAll({
                         packetType: HostPacketType.USER_CONNECTED,
                         user: message.user,
                     });
                     break;
                 default:
-                    this.handleClientMessage(userId, message);
+                    this.handleClientPacket(userId, message);
                     break;
             }
         });

@@ -1,5 +1,5 @@
-export interface Message<TPayload> {
-    eventId: string;
+export interface Message<TMessageType extends string | number, TPayload> {
+    messageType: TMessageType;
     serialId: string;
     originUserId: string;
     createdDate: number;

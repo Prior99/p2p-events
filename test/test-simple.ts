@@ -1,5 +1,5 @@
 jest.mock("peerjs");
-import { Host, Client, ClientPacketType, HostPacketType, EventManager, SendEventManager } from "../src";
+import { Host, Client, ClientPacketType, HostPacketType, MessageFactory, SentMessageHandle } from "../src";
 import { resetHistory, getHistory } from "./packet-history";
 import { libraryVersion } from "../generated/version";
 
@@ -73,30 +73,20 @@ describe("Simple", () => {
     it("has both users on host side", () => {
         const expected = [
             {
-                lastPingDate: expect.any(Number),
-                lostPingMessages: 0,
-                roundTripTime: undefined,
-                user: {
-                    id: host.userId,
-                    name: "Mr. Host",
-                },
+                id: host.userId,
+                name: "Mr. Host",
             },
             {
-                lastPingDate: expect.any(Number),
-                lostPingMessages: 0,
-                roundTripTime: undefined,
-                user: {
-                    id: client.userId,
-                    name: "Mr. Client",
-                },
+                id: client.userId,
+                name: "Mr. Client",
             },
-        ].sort((a, b) => a.user.id.localeCompare(b.user.id));
-        expect(host.users.all).toEqual(expected);
+        ].sort((a, b) => a.id.localeCompare(b.id));
+        expect(host.users).toEqual(expected);
     });
 
     describe("with a registered event", () => {
-        let hostEvent: EventManager<MockEventPayload>;
-        let clientEvent: EventManager<MockEventPayload>;
+        let hostEvent: MessageFactory<MockEventPayload>;
+        let clientEvent: MessageFactory<MockEventPayload>;
         let spyEventHost: jest.MockedFunction<any>;
         let spyEventClient: jest.MockedFunction<any>;
 
@@ -104,14 +94,14 @@ describe("Simple", () => {
             spyEventClient = jest.fn();
             spyEventHost = jest.fn();
             resetHistory();
-            hostEvent = host.event<MockEventPayload>(MockEvents.MOCK_EVENT);
-            clientEvent = client.event<MockEventPayload>(MockEvents.MOCK_EVENT);
+            hostEvent = host.message<MockEventPayload>(MockEvents.MOCK_EVENT);
+            clientEvent = client.message<MockEventPayload>(MockEvents.MOCK_EVENT);
             hostEvent.subscribe(spyEventHost);
             clientEvent.subscribe(spyEventClient);
         });
 
         describe("host sending the event to client", () => {
-            let sendResult: SendEventManager<MockEventPayload>;
+            let sendResult: SentMessageHandle<MockEventPayload>;
 
             beforeEach(async () => {
                 sendResult = hostEvent.send({ test: "something" });
@@ -126,7 +116,7 @@ describe("Simple", () => {
         });
 
         describe("client sending the event to host", () => {
-            let sendResult: SendEventManager<MockEventPayload>;
+            let sendResult: SentMessageHandle<MockEventPayload>;
 
             beforeEach(async () => {
                 sendResult = clientEvent.send({ test: "something" });
@@ -148,9 +138,9 @@ describe("Simple", () => {
                             packetType: ClientPacketType.MESSAGE,
                             message: {
                                 createdDate: expect.any(Number),
-                                eventId: MockEvents.MOCK_EVENT,
+                                messageType: MockEvents.MOCK_EVENT,
                                 originUserId: client.userId,
-                                serialId: sendResult.event.serialId,
+                                serialId: sendResult.message.serialId,
                                 payload: {
                                     test: "something",
                                 },
@@ -162,7 +152,7 @@ describe("Simple", () => {
                         to: clientPeerId,
                         data: {
                             packetType: HostPacketType.ACKNOWLEDGED_BY_HOST,
-                            serialId: sendResult.event.serialId,
+                            serialId: sendResult.message.serialId,
                         },
                     },
                     {
@@ -172,9 +162,9 @@ describe("Simple", () => {
                             packetType: HostPacketType.RELAYED_MESSAGE,
                             message: {
                                 createdDate: expect.any(Number),
-                                eventId: MockEvents.MOCK_EVENT,
+                                messageType: MockEvents.MOCK_EVENT,
                                 originUserId: client.userId,
-                                serialId: sendResult.event.serialId,
+                                serialId: sendResult.message.serialId,
                                 payload: {
                                     test: "something",
                                 },
@@ -186,7 +176,7 @@ describe("Simple", () => {
                         to: hostPeerId,
                         data: {
                             packetType: ClientPacketType.ACKNOWLEDGE,
-                            serialId: sendResult.event.serialId,
+                            serialId: sendResult.message.serialId,
                         },
                     },
                     {
@@ -194,7 +184,7 @@ describe("Simple", () => {
                         to: clientPeerId,
                         data: {
                             packetType: HostPacketType.ACKNOWLEDGED_BY_ALL,
-                            serialId: sendResult.event.serialId,
+                            serialId: sendResult.message.serialId,
                         },
                     },
                 ]);

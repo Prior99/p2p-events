@@ -7,12 +7,12 @@ export interface ClientOpenResult extends PeerOpenResult {
     remotePeerId: string;
 }
 
-export class Client<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> {
+export class Client<TUser extends User, TMessageType extends string | number> extends Peer<TUser, TMessageType> {
     private connection?: PeerJS.DataConnection;
 
-    public hostPeerId: string | undefined;
+    public hostConnectionId: string | undefined;
 
-    protected sendClientMessage<TPayload>(message: ClientPacket<TUser, TPayload>): void {
+    protected sendClientPacket<TPayload>(message: ClientPacket<TMessageType, TUser, TPayload>): void {
         if (!this.connection) { throw new Error("Can't send message: Connection is not open."); }
         this.sendToPeer(this.connection, message);
     }
@@ -22,8 +22,8 @@ export class Client<TUser extends User, TEventIds> extends Peer<TUser, TEventIds
         await new Promise(resolve => {
             this.connection = this.peer!.connect(remotePeerId, { reliable: true });
             this.connection.on("open", () => {
-                this.connection!.on("data", data => this.handleHostMessage(data));
-                this.sendClientMessage({
+                this.connection!.on("data", data => this.handleHostPacket(data));
+                this.sendClientPacket({
                     packetType: ClientPacketType.HELLO,
                     applicationProtocolVersion: this.options.applicationProtocolVersion,
                     protocolVersion: libraryVersion,
@@ -33,7 +33,7 @@ export class Client<TUser extends User, TEventIds> extends Peer<TUser, TEventIds
             });
         });
 
-        this.hostPeerId = remotePeerId;
+        this.hostConnectionId = remotePeerId;
         
         return { ...peerOpenResult, remotePeerId };
     }

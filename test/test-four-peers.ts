@@ -1,5 +1,5 @@
 jest.mock("peerjs");
-import { Host, Client, ClientPacketType, HostPacketType, EventManager, SendEventManager } from "../src";
+import { Host, Client, ClientPacketType, HostPacketType, MessageFactory, SentMessageHandle } from "../src";
 import { resetHistory, getHistory } from "./packet-history";
 import { libraryVersion } from "../generated/version";
 
@@ -188,48 +188,28 @@ describe("Four peers", () => {
     it("all peers know of all users", () => {
         const expected = [
             {
-                lastPingDate: expect.any(Number),
-                lostPingMessages: 0,
-                roundTripTime: undefined,
-                user: {
-                    id: host.userId,
-                    name: "Mr. Host",
-                },
+                id: host.userId,
+                name: "Mr. Host",
             },
             {
-                lastPingDate: expect.any(Number),
-                lostPingMessages: 0,
-                roundTripTime: undefined,
-                user: {
-                    id: clients[0].userId,
-                    name: "Mr. Client #0",
-                },
+                id: clients[0].userId,
+                name: "Mr. Client #0",
             },
             {
-                lastPingDate: expect.any(Number),
-                lostPingMessages: 0,
-                roundTripTime: undefined,
-                user: {
-                    id: clients[1].userId,
-                    name: "Mr. Client #1",
-                },
+                id: clients[1].userId,
+                name: "Mr. Client #1",
             },
             {
-                lastPingDate: expect.any(Number),
-                lostPingMessages: 0,
-                roundTripTime: undefined,
-                user: {
-                    id: clients[2].userId,
-                    name: "Mr. Client #2",
-                },
+                id: clients[2].userId,
+                name: "Mr. Client #2",
             },
-        ].sort((a, b) => a.user.id.localeCompare(b.user.id));
-        [host, ...clients].forEach((peer) => expect(peer.users.all).toEqual(expected));
+        ].sort((a, b) => a.id.localeCompare(b.id));
+        [host, ...clients].forEach((peer) => expect(peer.users).toEqual(expected));
     });
 
     describe("with a registered event", () => {
-        let hostEvent: EventManager<MockEventPayload>;
-        let clientEvents: EventManager<MockEventPayload>[];
+        let hostEvent: MessageFactory<MockEventPayload>;
+        let clientEvents: MessageFactory<MockEventPayload>[];
         let spyEventHost: jest.MockedFunction<any>;
         let spyEventClients: jest.MockedFunction<any>[];
 
@@ -237,14 +217,14 @@ describe("Four peers", () => {
             spyEventClients = clients.map(() => jest.fn());
             spyEventHost = jest.fn();
             resetHistory();
-            hostEvent = host.event<MockEventPayload>(MockEvents.MOCK_EVENT);
-            clientEvents = clients.map((client) => client.event<MockEventPayload>(MockEvents.MOCK_EVENT));
+            hostEvent = host.message<MockEventPayload>(MockEvents.MOCK_EVENT);
+            clientEvents = clients.map((client) => client.message<MockEventPayload>(MockEvents.MOCK_EVENT));
             hostEvent.subscribe(spyEventHost);
             clientEvents.forEach((event, index) => event.subscribe(spyEventClients[index]));
         });
 
         describe("host sending the event to clients", () => {
-            let sendResult: SendEventManager<MockEventPayload>;
+            let sendResult: SentMessageHandle<MockEventPayload>;
 
             beforeEach(async () => {
                 sendResult = hostEvent.send({ test: "something" });
@@ -261,7 +241,7 @@ describe("Four peers", () => {
         });
 
         describe("client sending the event to host", () => {
-            let sendResult: SendEventManager<MockEventPayload>;
+            let sendResult: SentMessageHandle<MockEventPayload>;
 
             beforeEach(async () => {
                 sendResult = clientEvents[0].send({ test: "something" });
@@ -285,9 +265,9 @@ describe("Four peers", () => {
                             packetType: ClientPacketType.MESSAGE,
                             message: {
                                 createdDate: expect.any(Number),
-                                eventId: MockEvents.MOCK_EVENT,
+                                messageType: MockEvents.MOCK_EVENT,
                                 originUserId: clients[0].userId,
-                                serialId: sendResult.event.serialId,
+                                serialId: sendResult.message.serialId,
                                 payload: {
                                     test: "something",
                                 },
@@ -299,7 +279,7 @@ describe("Four peers", () => {
                         to: clientPeerIds[0],
                         data: {
                             packetType: HostPacketType.ACKNOWLEDGED_BY_HOST,
-                            serialId: sendResult.event.serialId,
+                            serialId: sendResult.message.serialId,
                         },
                     },
                     {
@@ -309,9 +289,9 @@ describe("Four peers", () => {
                             packetType: HostPacketType.RELAYED_MESSAGE,
                             message: {
                                 createdDate: expect.any(Number),
-                                eventId: MockEvents.MOCK_EVENT,
+                                messageType: MockEvents.MOCK_EVENT,
                                 originUserId: clients[0].userId,
-                                serialId: sendResult.event.serialId,
+                                serialId: sendResult.message.serialId,
                                 payload: {
                                     test: "something",
                                 },
@@ -323,7 +303,7 @@ describe("Four peers", () => {
                         to: hostPeerId,
                         data: {
                             packetType: ClientPacketType.ACKNOWLEDGE,
-                            serialId: sendResult.event.serialId,
+                            serialId: sendResult.message.serialId,
                         },
                     },
                     {
@@ -333,9 +313,9 @@ describe("Four peers", () => {
                             packetType: HostPacketType.RELAYED_MESSAGE,
                             message: {
                                 createdDate: expect.any(Number),
-                                eventId: MockEvents.MOCK_EVENT,
+                                messageType: MockEvents.MOCK_EVENT,
                                 originUserId: clients[0].userId,
-                                serialId: sendResult.event.serialId,
+                                serialId: sendResult.message.serialId,
                                 payload: {
                                     test: "something",
                                 },
@@ -347,7 +327,7 @@ describe("Four peers", () => {
                         to: hostPeerId,
                         data: {
                             packetType: ClientPacketType.ACKNOWLEDGE,
-                            serialId: sendResult.event.serialId,
+                            serialId: sendResult.message.serialId,
                         },
                     },
                     {
@@ -357,9 +337,9 @@ describe("Four peers", () => {
                             packetType: HostPacketType.RELAYED_MESSAGE,
                             message: {
                                 createdDate: expect.any(Number),
-                                eventId: MockEvents.MOCK_EVENT,
+                                messageType: MockEvents.MOCK_EVENT,
                                 originUserId: clients[0].userId,
-                                serialId: sendResult.event.serialId,
+                                serialId: sendResult.message.serialId,
                                 payload: {
                                     test: "something",
                                 },
@@ -371,7 +351,7 @@ describe("Four peers", () => {
                         to: hostPeerId,
                         data: {
                             packetType: ClientPacketType.ACKNOWLEDGE,
-                            serialId: sendResult.event.serialId,
+                            serialId: sendResult.message.serialId,
                         },
                     },
                     {
@@ -379,7 +359,7 @@ describe("Four peers", () => {
                         to: clientPeerIds[0],
                         data: {
                             packetType: HostPacketType.ACKNOWLEDGED_BY_ALL,
-                            serialId: sendResult.event.serialId,
+                            serialId: sendResult.message.serialId,
                         },
                     },
                 ]);
@@ -491,12 +471,14 @@ describe("Four peers", () => {
             it("has the ping infos available in all peers", () => {
                 [host, ...clients].forEach((peer) =>
                     expect(
-                        peer.users.all.map(({ lastPingDate, lostPingMessages, roundTripTime, user }) => ({
-                            lastPingDate,
-                            lostPingMessages,
-                            roundTripTime,
-                            userId: user.id,
-                        })),
+                        Array.from(peer.pingInfos.entries()).map(
+                            ([userId, { lastPingDate, lostPingMessages, roundTripTime }]) => ({
+                                lastPingDate,
+                                lostPingMessages,
+                                roundTripTime,
+                                userId: userId,
+                            }),
+                        ),
                     ).toEqual(pingInfos),
                 );
             });
