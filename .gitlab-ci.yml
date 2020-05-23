@@ -54,7 +54,6 @@ pages:
   stage: deploy
   script:
     - mv docs public
-    - mv coverage public/coverage
     - mv example public/example
   dependencies:
     - build
