@@ -1,6 +1,11 @@
 import { UserInfo, User, PingInfo } from "./users";
 import { Message } from "./message";
 
+export interface Versions {
+    application: string;
+    p2pNetwork: string;
+}
+
 export const enum HostPacketType {
     WELCOME = "welcome",
     USER_CONNECTED = "user connected",
@@ -29,9 +34,8 @@ export interface HostPacketWelcome<TUser extends User> {
 }
 
 export interface HostPacketIncompatible {
-    packetType: HostPacketType.INCOMPATIBLE,
-    applicationProtocolVersion: string;
-    protocolVersion: string;
+    packetType: HostPacketType.INCOMPATIBLE;
+    versions: Versions;
 }
 
 export interface HostPacketUserConnected<TUser extends User> {
@@ -89,8 +93,7 @@ export type HostPacket<TMessageType extends string | number, TUser extends User,
 export interface ClientPacketHello<TUser extends User> {
     packetType: ClientPacketType.HELLO;
     user: TUser;
-    applicationProtocolVersion: string;
-    protocolVersion: string;
+    versions: Versions;
 }
 
 export interface ClientPacketDisconnect {

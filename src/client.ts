@@ -13,20 +13,24 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
     public hostConnectionId: string | undefined;
 
     protected sendClientPacketToHost<TPayload>(message: ClientPacket<TMessageType, TUser, TPayload>): void {
-        if (!this.connection) { throw new Error("Can't send message: Connection is not open."); }
+        if (!this.connection) {
+            this.throwError(new Error("Can't send message: Connection is not open."));
+        }
         this.sendHostPacketToPeer(this.connection, message);
     }
 
     public async open(remotePeerId: string): Promise<ClientOpenResult> {
         const peerOpenResult = await super.createLocalPeer();
-        await new Promise(resolve => {
+        await new Promise((resolve) => {
             this.connection = this.peer!.connect(remotePeerId, { reliable: true });
             this.connection.on("open", () => {
-                this.connection!.on("data", data => this.handleHostPacket(data));
+                this.connection!.on("data", (data) => this.handleHostPacket(data));
                 this.sendClientPacketToHost({
                     packetType: ClientPacketType.HELLO,
-                    applicationProtocolVersion: this.options.applicationProtocolVersion,
-                    protocolVersion: libraryVersion,
+                    versions: {
+                        application: this.options.applicationProtocolVersion,
+                        p2pNetwork: libraryVersion,
+                    },
                     user: this.ownUser,
                 });
                 resolve();
@@ -34,7 +38,7 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
         });
 
         this.hostConnectionId = remotePeerId;
-        
+
         return { ...peerOpenResult, remotePeerId };
     }
 }

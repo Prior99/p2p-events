@@ -1,9 +1,29 @@
 import PeerJS from "peerjs";
 import { Users } from "./users";
-import { ClientPacket, HostPacket, HostPacketType, ClientPacketType, Message, PingInfo, User, NetworkMode } from "./types";
-import { unreachable, PromiseListener, resolvePromiseListeners, rejectPromiseListeners } from "./utils";
+import {
+    ClientPacket,
+    HostPacket,
+    HostPacketType,
+    ClientPacketType,
+    Message,
+    PingInfo,
+    User,
+    NetworkMode,
+    ErrorReason,
+    Versions,
+} from "./types";
+import {
+    unreachable,
+    PromiseListener,
+    resolvePromiseListeners,
+    rejectPromiseListeners,
+    NetworkError,
+    IncompatibilityError,
+    InternalError,
+} from "./utils";
 import { v4 as uuid } from "uuid";
 import { debug } from "./utils";
+import { libraryVersion } from "../generated/version";
 
 export type MessageHandler<TPayload> = (payload: TPayload, userId: string, createdDate: Date) => void;
 export type Unsubscribe = () => void;
@@ -54,16 +74,20 @@ export type PeerEventArgumentMapping<TMessageType extends string | number, TUser
     pinginfo: [Map<string, PingInfo>];
     connect: [];
     userupdate: [TUser];
+    error: [Error, ErrorReason];
 };
+
 export type PeerEvent<TMessageType extends string | number, TUser extends User> = keyof PeerEventArgumentMapping<
     TMessageType,
     TUser
 >;
+
 export type PeerEventArguments<
     TMessageType extends string | number,
     TEvent extends PeerEvent<TMessageType, TUser>,
     TUser extends User
 > = PeerEventArgumentMapping<TMessageType, TUser>[TEvent];
+
 export type PeerEventListener<
     TMessageType extends string | number,
     TEvent extends PeerEvent<TMessageType, TUser>,
@@ -91,6 +115,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         pinginfo: new Set(),
         connect: new Set(),
         userupdate: new Set(),
+        error: new Set(),
     };
 
     constructor(inputOptions: PeerOptions<TUser>) {
@@ -221,6 +246,19 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         return messageFactory;
     }
 
+    protected throwError(error: Error): never {
+        const errorReason =
+            error instanceof InternalError
+                ? ErrorReason.INTERNAL
+                : error instanceof NetworkError
+                ? ErrorReason.NETWORK
+                : error instanceof IncompatibilityError
+                ? ErrorReason.INCOMPATIBLE
+                : ErrorReason.OTHER;
+        this.emitEvent("error", error, errorReason);
+        throw error;
+    }
+
     protected abstract sendClientPacketToHost<TPayload>(packet: ClientPacket<TMessageType, TUser, TPayload>): void;
 
     protected handleHostPacket<TPayload>(packet: HostPacket<TMessageType, TUser, TPayload>): void {
@@ -256,7 +294,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 });
                 const messageFactoryState = this.messageFactoryStates.get(message.messageType);
                 if (!messageFactoryState) {
-                    throw new Error(`Received unknown message of type "${message.messageType}".`);
+                    this.throwError(new InternalError(`Received unknown message of type "${message.messageType}".`));
                 }
                 const createdDate = new Date(message.createdDate);
                 this.emitEvent("message", message, message.originUserId, createdDate);
@@ -272,7 +310,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 }
                 const sentMessageState = this.sentMessageStates.get(serialId);
                 if (!sentMessageState) {
-                    throw new Error(`No sent message with serial id "${serialId}".`);
+                    this.throwError(new InternalError(`No sent message with serial id "${serialId}".`));
                 }
                 resolvePromiseListeners(Array.from(sentMessageState.waitForHostListeners.values()));
                 break;
@@ -284,7 +322,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 }
                 const sentMessageState = this.sentMessageStates.get(serialId);
                 if (!sentMessageState) {
-                    throw new Error(`No sent message with serial id "${serialId}".`);
+                    this.throwError(new InternalError(`No sent message with serial id "${serialId}".`));
                 }
                 resolvePromiseListeners(Array.from(sentMessageState.waitForAllListeners.values()));
                 clearTimeout(sentMessageState.timeout);
@@ -305,15 +343,23 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 this.emitEvent("userupdate", this.userManager.getUser(packet.user.id)!);
                 break;
             case HostPacketType.INCOMPATIBLE:
-                throw new Error("Incompatible with host.");
+                this.throwError(new IncompatibilityError("Incompatible with host.", this.versions, packet.versions));
+                break;
             default:
                 unreachable(packet);
         }
     }
 
+    public get versions(): Versions {
+        return {
+            application: this.options.applicationProtocolVersion,
+            p2pNetwork: libraryVersion,
+        };
+    }
+
     public close(): void {
         if (!this.peer) {
-            throw new Error("Can't close peer. Not connected.");
+            this.throwError(new Error("Can't close peer. Not connected."));
         }
         this.sendClientPacketToHost({
             packetType: ClientPacketType.DISCONNECT,
@@ -329,7 +375,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
             this.peer.on("open", () => resolve());
         });
         if (!this.peer) {
-            throw new Error("Connection id could not be determined.");
+            this.throwError(new Error("Connection id could not be determined."));
         }
         this.networkMode = NetworkMode.CLIENT;
         return {

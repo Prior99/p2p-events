@@ -46,8 +46,10 @@ describe("Four peers", () => {
                 to: hostPeerId,
                 data: {
                     packetType: ClientPacketType.HELLO,
-                    applicationProtocolVersion: "1.0.0",
-                    protocolVersion: libraryVersion,
+                    versions: {
+                        application: "1.0.0",
+                        p2pNetwork: libraryVersion,
+                    },
                     user: clients[0].ownUser,
                 },
             },
@@ -79,8 +81,10 @@ describe("Four peers", () => {
                 to: hostPeerId,
                 data: {
                     packetType: ClientPacketType.HELLO,
-                    applicationProtocolVersion: "1.0.0",
-                    protocolVersion: libraryVersion,
+                    versions: {
+                        application: "1.0.0",
+                        p2pNetwork: libraryVersion,
+                    },
                     user: clients[1].ownUser,
                 },
             },
@@ -126,8 +130,10 @@ describe("Four peers", () => {
                 to: hostPeerId,
                 data: {
                     packetType: ClientPacketType.HELLO,
-                    applicationProtocolVersion: "1.0.0",
-                    protocolVersion: libraryVersion,
+                    versions: {
+                        application: "1.0.0",
+                        p2pNetwork: libraryVersion,
+                    },
                     user: clients[2].ownUser,
                 },
             },

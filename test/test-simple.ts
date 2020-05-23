@@ -141,8 +141,10 @@ describe("Simple", () => {
                 to: hostPeerId,
                 data: {
                     packetType: ClientPacketType.HELLO,
-                    applicationProtocolVersion: "1.0.0",
-                    protocolVersion: libraryVersion,
+                    versions: {
+                        application: "1.0.0",
+                        p2pNetwork: libraryVersion,
+                    },
                     user: client.ownUser,
                 },
             },
