@@ -36,8 +36,15 @@ async function main(): Promise<void> {
     const pingInfo = observable.map<string, PingInfo>();
 
     addTodo.subscribe(({ title, id }, createdBy) => todos.push({ title, id, createdBy }));
-    checkTodo.subscribe(({ id }, checkedBy) => (todos.find((todo) => todo.id === id)!.checkedBy = checkedBy));
-    deleteTodo.subscribe(({ id }) => todos.replace(todos.filter((todo) => todo.id === id)));
+    checkTodo.subscribe(({ id }, checkedBy) => {
+        const todo = todos.find((todo) => todo.id === id)!;
+        if (todo.checkedBy) {
+            todo.checkedBy = undefined;
+        } else {
+            todo.checkedBy = checkedBy;
+        }
+    });
+    deleteTodo.subscribe(({ id }) => todos.replace(todos.filter((todo) => todo.id !== id)));
     currentState.subscribe(({ todos: currentTodods }) => todos.replace(currentTodods));
 
     peer.on("userconnect", (user) => {
