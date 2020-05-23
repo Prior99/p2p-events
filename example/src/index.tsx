@@ -11,7 +11,6 @@ async function createPeer(): Promise<Peer<TodoUser, Messages>> {
     const options = {
         user: { name: "Unknown" },
         applicationProtocolVersion,
-        peerJsOptions: { host: "localhost", port: 9000, path: "/myapp" },
     };
     if (location.hash) {
         const client = new Client<TodoUser, Messages>(options);
