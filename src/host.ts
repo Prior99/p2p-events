@@ -1,5 +1,5 @@
 import PeerJS from "peerjs";
-import { User, HostPacket, ClientPacket, ClientPacketType, HostPacketType, P2PEvent } from "./types";
+import { User, HostPacket, ClientPacket, ClientPacketType, HostPacketType, Message } from "./types";
 import { Peer, PeerOpenResult, PeerOptions, peerDefaultOptions } from "./peer";
 import { unreachable } from "./utils";
 import { libraryVersion } from "../generated/version";
@@ -10,7 +10,7 @@ export interface ConnectionMeta {
 }
 
 export interface RelayedEventManager<TPayload> {
-    event: P2PEvent<TPayload>;
+    event: Message<TPayload>;
     acknowledgedBy: Set<string>;
 }
 

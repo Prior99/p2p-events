@@ -1,5 +1,5 @@
 import { UserInfo, User, PingInfo } from "./users";
-import { P2PEvent } from "./message";
+import { Message } from "./message";
 
 export const enum HostPacketType {
     WELCOME = "welcome",
@@ -51,7 +51,7 @@ export interface HostPacketPing {
 
 export interface HostPacketRelayedEvent<TPayload> {
     packetType: HostPacketType.RELAYED_EVENT;
-    event: P2PEvent<TPayload>;
+    event: Message<TPayload>;
 }
 
 export interface HostPacketAcknowledgedByHost {
@@ -105,7 +105,7 @@ export interface ClientPacketPong {
 
 export interface ClientPacketEvent<TPayload> {
     packetType: ClientPacketType.EVENT;
-    event: P2PEvent<TPayload>;
+    event: Message<TPayload>;
 }
 
 export interface ClientPacketAcknowledge {

@@ -1,6 +1,6 @@
 import PeerJS from "peerjs";
 import { Users } from "./users";
-import { ClientPacket, HostPacket, HostPacketType, ClientPacketType, P2PEvent, PingInfo, User } from "./types";
+import { ClientPacket, HostPacket, HostPacketType, ClientPacketType, Message, PingInfo, User } from "./types";
 import { unreachable, PromiseListener, resolvePromiseListeners, rejectPromiseListeners } from "./utils";
 import { v4 as uuid } from "uuid";
 
@@ -8,7 +8,7 @@ export type EventHandler<TPayload> = (payload: TPayload, userId: string, created
 export type Unsubscribe = () => void;
 
 export interface SendEventManager<TPayload> {
-    event: P2PEvent<TPayload>;
+    event: Message<TPayload>;
     waitForHost: () => Promise<void>;
     waitForAll: () => Promise<void>;
 }
@@ -24,7 +24,7 @@ export interface EventMeta<TPayload> {
 }
 
 export interface PendingEventManager<TPayload> {
-    event: P2PEvent<TPayload>;
+    event: Message<TPayload>;
     waitForHostListeners: Set<PromiseListener<[void], [Error]>>;
     waitForAllListeners: Set<PromiseListener<[void], [Error]>>;
     timeout: ReturnType<typeof setTimeout>;
@@ -47,7 +47,7 @@ export const peerDefaultOptions = {
 
 export type PeerEvent = "event" | "userconnect" | "userdisconnect" | "pinginfo" | "connect" | "userupdate";
 export type PeerEventArguments<TEvent extends PeerEvent, TUser extends User> = {
-    "event": [P2PEvent<unknown>, string, Date];
+    "event": [Message<unknown>, string, Date];
     "userconnect": [TUser];
     "userdisconnect": [string];
     "pinginfo": [Map<string, PingInfo>];
@@ -227,7 +227,7 @@ export abstract class Peer<TUser extends User, TEventId> {
         }
     }
 
-    private receivedEvent<TEventPayload>(event: P2PEvent<TEventPayload>): void {
+    private receivedEvent<TEventPayload>(event: Message<TEventPayload>): void {
         if (this.ignoredSerialIds.has(event.serialId)) {
             return;
         }
@@ -301,8 +301,8 @@ export abstract class Peer<TUser extends User, TEventId> {
         connection.send(message);
     }
 
-    protected sendEvent<TPayload>(eventId: string, payload: TPayload): P2PEvent<TPayload> {
-        const event: P2PEvent<TPayload> = {
+    protected sendEvent<TPayload>(eventId: string, payload: TPayload): Message<TPayload> {
+        const event: Message<TPayload> = {
             eventId,
             originUserId: this.userId,
             payload,
