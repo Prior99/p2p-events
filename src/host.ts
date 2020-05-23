@@ -48,6 +48,10 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
         };
     }
 
+    public get hostPeerId(): string | undefined {
+        return this.peer?.id;
+    }
+
     public ping(): void {
         this.sendHostMessage({
             messageType: HostMessageType.PING,

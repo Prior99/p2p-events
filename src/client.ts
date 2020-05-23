@@ -11,6 +11,8 @@ export interface ClientOpenResult extends PeerOpenResult {
 export class Client<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> {
     private connection?: PeerJS.DataConnection;
 
+    public hostPeerId: string | undefined;
+
     protected sendClientMessage<TPayload>(message: ClientMessage<TUser, TPayload>): void {
         if (!this.connection) { throw new Error("Can't send message: Connection is not open."); }
         this.sendToPeer(this.connection, message);
@@ -31,6 +33,9 @@ export class Client<TUser extends User, TEventIds> extends Peer<TUser, TEventIds
                 resolve();
             });
         });
+
+        this.hostPeerId = remotePeerId;
+        
         return { ...peerOpenResult, remotePeerId };
     }
 }

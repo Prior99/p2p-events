@@ -9,7 +9,20 @@
     },
     "license": "MIT",
     "eslintConfig": {
-        "extends": "../eslint-defaults.json"
+        "extends": [
+            "../eslint-defaults.json",
+            "plugin:react/recommended"
+        ],
+        "plugins": [
+            "@typescript-eslint",
+            "jest",
+            "react"
+        ],
+        "settings": {
+            "react": {
+                "version": "detect"
+            }
+        }
     },
     "dependencies": {
         "p2p-events": "file:..",

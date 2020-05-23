@@ -1,5 +1,5 @@
 import PeerJS from "peerjs";
-import { User, Users } from "./users";
+import { User, Users, PingInfo } from "./users";
 import { ClientMessage, HostMessage, HostMessageType, ClientMessageType } from "./messages";
 import { unreachable } from "./unreachable";
 import { v4 as uuid } from "uuid";
@@ -47,16 +47,38 @@ export const peerDefaultOptions = {
     timeout: 5,
 };
 
+export type PeerEvent = "event" | "userconnect" | "userdisconnect" | "pinginfo" | "connect" | "userupdate";
+export type PeerEventArguments<TEvent extends PeerEvent, TUser extends User> = {
+    "event": [P2PEvent<unknown>, string, Date];
+    "userconnect": [TUser];
+    "userdisconnect": [string];
+    "pinginfo": [Map<string, PingInfo>];
+    "connect": [];
+    "userupdate": [TUser];
+}[TEvent];
+export type PeerEventListener<TEvent extends PeerEvent, TUser extends User> = (
+    ...args: PeerEventArguments<TEvent, TUser>
+) => void;
+
 export abstract class Peer<TUser extends User, TEventId> {
     public users = new Users<TUser>();
     public userId = uuid();
     public readonly options: Required<PeerOptions<TUser>>;
+    public abstract hostPeerId: string | undefined;
 
     protected peer?: PeerJS;
     protected events = new Map<string, EventMeta<any>>(); // eslint-disable-line
     protected pendingEvents = new Map<string, PendingEventManager<any>>(); // eslint-disable-line
     protected ignoredSerialIds = new Set<string>();
     protected sequenceNumber = 0;
+    protected eventListeners: { [TKey in PeerEvent]: Set<PeerEventListener<TKey, TUser>> } = {
+        event: new Set(),
+        userconnect: new Set(),
+        userdisconnect: new Set(),
+        pinginfo: new Set(),
+        connect: new Set(),
+        userupdate: new Set(),
+    };
 
     constructor(inputOptions: PeerOptions<TUser>) {
         this.users.addUser({
@@ -71,6 +93,40 @@ export abstract class Peer<TUser extends User, TEventId> {
 
     public get ownUser(): TUser {
         return this.users.getUser(this.userId)!;
+    }
+
+    public on<TPeerEvent extends PeerEvent>(
+        eventName: TPeerEvent,
+        handler: (...args: PeerEventArguments<TPeerEvent, TUser>) => void,
+    ): void {
+        this.eventListeners[eventName].add(handler);
+    }
+
+    public addEventListener = this.on;
+
+    public removeEventListener<TPeerEvent extends PeerEvent>(
+        eventName: TPeerEvent,
+        handler: (...args: PeerEventArguments<TPeerEvent, TUser>) => void,
+    ): void {
+        this.eventListeners[eventName].delete(handler);
+    }
+
+    protected emitEvent<TPeerEvent extends PeerEvent>(
+        eventName: TPeerEvent,
+        ...args: PeerEventArguments<TPeerEvent, TUser>
+    ): void {
+        const listeners = this.eventListeners[eventName] as Set<PeerEventListener<TPeerEvent, TUser>>;
+        listeners.forEach((listener) => listener(...args));
+    }
+
+    public updateUser(user: Partial<TUser>): void {
+        this.sendClientMessage({
+            messageType: ClientMessageType.UPDATE_USER,
+            user: {
+                ...user,
+                id: this.userId,
+            },
+        });
     }
 
     public event<TPayload>(eventId: TEventId): EventManager<TPayload> {
@@ -126,12 +182,15 @@ export abstract class Peer<TUser extends User, TEventId> {
         switch (message.messageType) {
             case HostMessageType.WELCOME:
                 this.users.initialize(message.users);
+                this.emitEvent("connect");
                 break;
             case HostMessageType.USER_CONNECTED:
                 this.users.addUser(message.user);
+                this.emitEvent("userconnect", message.user);
                 break;
             case HostMessageType.USER_DISCONNECTED:
                 this.users.removeUser(message.userId);
+                this.emitEvent("userdisconnect", message.userId);
                 break;
             case HostMessageType.PING:
                 this.sendClientMessage({
@@ -149,13 +208,18 @@ export abstract class Peer<TUser extends User, TEventId> {
             case HostMessageType.ACKNOWLEDGED_BY_ALL:
                 this.eventAcknowledgedByAll(message.serialId);
                 break;
-            case HostMessageType.PING_INFO:
+            case HostMessageType.PING_INFO: {
+                const map = new Map<string, PingInfo>();
                 for (const { userId, ...pingInfo } of message.pingInfos) {
                     this.users.updatePingInfo(userId, pingInfo);
+                    map.set(userId, pingInfo);
                 }
+                this.emitEvent("pinginfo", map);
                 break;
+            }
             case HostMessageType.UPDATE_USER:
                 this.users.updateUser(message.user.id, message.user);
+                this.emitEvent("userupdate", this.users.getUser(message.user.id)!);
                 break;
             case HostMessageType.INCOMPATIBLE:
                 throw new Error("Incompatible with host.");
@@ -177,12 +241,14 @@ export abstract class Peer<TUser extends User, TEventId> {
         if (!eventManager) {
             throw new Error(`Received unknown event with id "${event.eventId}".`);
         }
+        const createdDate = new Date(event.createdDate);
+        this.emitEvent("event", event, event.originUserId, createdDate);
         eventManager.subscriptions.forEach((subscription) =>
-            subscription(event.payload, event.originUserId, new Date(event.createdDate)),
+            subscription(event.payload, event.originUserId, createdDate),
         );
     }
 
-    private eventAcknowledgedByHost<TEventPayload>(serialId: string): void {
+    private eventAcknowledgedByHost(serialId: string): void {
         if (this.ignoredSerialIds.has(serialId)) {
             return;
         }
@@ -193,7 +259,7 @@ export abstract class Peer<TUser extends User, TEventId> {
         resolvePromiseListeners(Array.from(pendingEvent.waitForHostListeners.values()));
     }
 
-    private eventAcknowledgedByAll<TEventPayload>(serialId: string): void {
+    private eventAcknowledgedByAll(serialId: string): void {
         if (this.ignoredSerialIds.has(serialId)) {
             return;
         }
@@ -218,7 +284,7 @@ export abstract class Peer<TUser extends User, TEventId> {
 
     protected async createLocalPeer(): Promise<PeerOpenResult> {
         await new Promise((resolve) => {
-            this.peer = new PeerJS(null as any); // eslint-disable-line
+            this.peer = new PeerJS(null as any, { host: "localhost", port: 9000, path: "/myapp"}); // eslint-disable-line
             this.peer.on("open", () => resolve());
         });
         if (!this.peer) {
