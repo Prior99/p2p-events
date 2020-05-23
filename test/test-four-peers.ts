@@ -8,17 +8,17 @@ interface MockUser {
     name: string;
 }
 
-const enum MockEvents {
-    MOCK_EVENT = "mock event",
+const enum MockMessageType {
+    MOCK_MESSAGE = "mock message",
 }
 
-interface MockEventPayload {
+interface MockPayload {
     test: string;
 }
 
 describe("Four peers", () => {
-    let host: Host<MockUser, MockEvents>;
-    let clients: Client<MockUser, MockEvents>[];
+    let host: Host<MockUser, MockMessageType>;
+    let clients: Client<MockUser, MockMessageType>[];
     let hostPeerId: string;
     let clientPeerIds: string[];
 
@@ -207,52 +207,52 @@ describe("Four peers", () => {
         [host, ...clients].forEach((peer) => expect(peer.users).toEqual(expected));
     });
 
-    describe("with a registered event", () => {
-        let hostEvent: MessageFactory<MockEventPayload>;
-        let clientEvents: MessageFactory<MockEventPayload>[];
-        let spyEventHost: jest.MockedFunction<any>;
-        let spyEventClients: jest.MockedFunction<any>[];
+    describe("with a registered message", () => {
+        let hostMessageFactory: MessageFactory<MockMessageType, MockPayload>;
+        let clientMessageFactories: MessageFactory<MockMessageType, MockPayload>[];
+        let spyMessageHost: jest.MockedFunction<any>;
+        let spyMessageClients: jest.MockedFunction<any>[];
 
         beforeEach(async () => {
-            spyEventClients = clients.map(() => jest.fn());
-            spyEventHost = jest.fn();
+            spyMessageClients = clients.map(() => jest.fn());
+            spyMessageHost = jest.fn();
             resetHistory();
-            hostEvent = host.message<MockEventPayload>(MockEvents.MOCK_EVENT);
-            clientEvents = clients.map((client) => client.message<MockEventPayload>(MockEvents.MOCK_EVENT));
-            hostEvent.subscribe(spyEventHost);
-            clientEvents.forEach((event, index) => event.subscribe(spyEventClients[index]));
+            hostMessageFactory = host.message<MockPayload>(MockMessageType.MOCK_MESSAGE);
+            clientMessageFactories = clients.map((client) => client.message<MockPayload>(MockMessageType.MOCK_MESSAGE));
+            hostMessageFactory.subscribe(spyMessageHost);
+            clientMessageFactories.forEach((factory, index) => factory.subscribe(spyMessageClients[index]));
         });
 
-        describe("host sending the event to clients", () => {
-            let sendResult: SentMessageHandle<MockEventPayload>;
+        describe("host sending the message to clients", () => {
+            let sendResult: SentMessageHandle<MockMessageType, MockPayload>;
 
             beforeEach(async () => {
-                sendResult = hostEvent.send({ test: "something" });
+                sendResult = hostMessageFactory.send({ test: "something" });
                 await sendResult.waitForAll();
             });
 
             it("called the listener on the host", () =>
-                expect(spyEventHost).toHaveBeenCalledWith({ test: "something" }, host.userId, expect.any(Date)));
+                expect(spyMessageHost).toHaveBeenCalledWith({ test: "something" }, host.userId, expect.any(Date)));
 
             it("called the listeners on the clients", () =>
-                spyEventClients.forEach((spy) =>
+                spyMessageClients.forEach((spy) =>
                     expect(spy).toHaveBeenCalledWith({ test: "something" }, host.userId, expect.any(Date)),
                 ));
         });
 
-        describe("client sending the event to host", () => {
-            let sendResult: SentMessageHandle<MockEventPayload>;
+        describe("client sending the message to host", () => {
+            let sendResult: SentMessageHandle<MockMessageType, MockPayload>;
 
             beforeEach(async () => {
-                sendResult = clientEvents[0].send({ test: "something" });
+                sendResult = clientMessageFactories[0].send({ test: "something" });
                 await sendResult.waitForAll();
             });
 
             it("called the listener on the host", () =>
-                expect(spyEventHost).toHaveBeenCalledWith({ test: "something" }, clients[0].userId, expect.any(Date)));
+                expect(spyMessageHost).toHaveBeenCalledWith({ test: "something" }, clients[0].userId, expect.any(Date)));
 
             it("called the listeners on the clients", () =>
-                spyEventClients.forEach((spy) =>
+                spyMessageClients.forEach((spy) =>
                     expect(spy).toHaveBeenCalledWith({ test: "something" }, clients[0].userId, expect.any(Date)),
                 ));
 
@@ -265,7 +265,7 @@ describe("Four peers", () => {
                             packetType: ClientPacketType.MESSAGE,
                             message: {
                                 createdDate: expect.any(Number),
-                                messageType: MockEvents.MOCK_EVENT,
+                                messageType: MockMessageType.MOCK_MESSAGE,
                                 originUserId: clients[0].userId,
                                 serialId: sendResult.message.serialId,
                                 payload: {
@@ -289,7 +289,7 @@ describe("Four peers", () => {
                             packetType: HostPacketType.RELAYED_MESSAGE,
                             message: {
                                 createdDate: expect.any(Number),
-                                messageType: MockEvents.MOCK_EVENT,
+                                messageType: MockMessageType.MOCK_MESSAGE,
                                 originUserId: clients[0].userId,
                                 serialId: sendResult.message.serialId,
                                 payload: {
@@ -313,7 +313,7 @@ describe("Four peers", () => {
                             packetType: HostPacketType.RELAYED_MESSAGE,
                             message: {
                                 createdDate: expect.any(Number),
-                                messageType: MockEvents.MOCK_EVENT,
+                                messageType: MockMessageType.MOCK_MESSAGE,
                                 originUserId: clients[0].userId,
                                 serialId: sendResult.message.serialId,
                                 payload: {
@@ -337,7 +337,7 @@ describe("Four peers", () => {
                             packetType: HostPacketType.RELAYED_MESSAGE,
                             message: {
                                 createdDate: expect.any(Number),
-                                messageType: MockEvents.MOCK_EVENT,
+                                messageType: MockMessageType.MOCK_MESSAGE,
                                 originUserId: clients[0].userId,
                                 serialId: sendResult.message.serialId,
                                 payload: {
