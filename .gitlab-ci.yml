@@ -36,7 +36,7 @@ build:
 test:
   before_script:
     - yarn
-  stage: test
+  stage: build
   script:
     - yarn test
   dependencies:
@@ -48,7 +48,7 @@ test:
 lint:
   before_script:
     - yarn
-  stage: test
+  stage: build
   script:
     - yarn lint
 
