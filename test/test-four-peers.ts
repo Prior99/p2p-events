@@ -282,8 +282,8 @@ describe("Four peers", () => {
                         from: clientPeerIds[0],
                         to: hostPeerId,
                         data: {
-                            packetType: ClientPacketType.EVENT,
-                            event: {
+                            packetType: ClientPacketType.MESSAGE,
+                            message: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
                                 originUserId: clients[0].userId,
@@ -306,8 +306,8 @@ describe("Four peers", () => {
                         from: hostPeerId,
                         to: clientPeerIds[0],
                         data: {
-                            packetType: HostPacketType.RELAYED_EVENT,
-                            event: {
+                            packetType: HostPacketType.RELAYED_MESSAGE,
+                            message: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
                                 originUserId: clients[0].userId,
@@ -330,8 +330,8 @@ describe("Four peers", () => {
                         from: hostPeerId,
                         to: clientPeerIds[1],
                         data: {
-                            packetType: HostPacketType.RELAYED_EVENT,
-                            event: {
+                            packetType: HostPacketType.RELAYED_MESSAGE,
+                            message: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
                                 originUserId: clients[0].userId,
@@ -354,8 +354,8 @@ describe("Four peers", () => {
                         from: hostPeerId,
                         to: clientPeerIds[2],
                         data: {
-                            packetType: HostPacketType.RELAYED_EVENT,
-                            event: {
+                            packetType: HostPacketType.RELAYED_MESSAGE,
+                            message: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
                                 originUserId: clients[0].userId,

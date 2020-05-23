@@ -6,7 +6,7 @@ export const enum HostPacketType {
     USER_CONNECTED = "user connected",
     USER_DISCONNECTED = "user disconnected",
     PING = "ping",
-    RELAYED_EVENT = "relayed event",
+    RELAYED_MESSAGE = "relayed message",
     ACKNOWLEDGED_BY_HOST = "acknowledged by host",
     ACKNOWLEDGED_BY_ALL = "acknowledged by all",
     PING_INFO = "ping info",
@@ -18,7 +18,7 @@ export const enum ClientPacketType {
     HELLO = "hello",
     DISCONNECT = "disconnect",
     PONG = "pong",
-    EVENT = "event",
+    MESSAGE = "message",
     ACKNOWLEDGE = "acknowledge",
     UPDATE_USER = "update user",
 }
@@ -50,8 +50,8 @@ export interface HostPacketPing {
 }
 
 export interface HostPacketRelayedEvent<TPayload> {
-    packetType: HostPacketType.RELAYED_EVENT;
-    event: Message<TPayload>;
+    packetType: HostPacketType.RELAYED_MESSAGE;
+    message: Message<TPayload>;
 }
 
 export interface HostPacketAcknowledgedByHost {
@@ -104,8 +104,8 @@ export interface ClientPacketPong {
 }
 
 export interface ClientPacketEvent<TPayload> {
-    packetType: ClientPacketType.EVENT;
-    event: Message<TPayload>;
+    packetType: ClientPacketType.MESSAGE;
+    message: Message<TPayload>;
 }
 
 export interface ClientPacketAcknowledge {

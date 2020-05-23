@@ -109,8 +109,8 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
                     lastPingDate: Date.now(),
                 });
                 break;
-            case ClientPacketType.EVENT: {
-                const { event } = message;
+            case ClientPacketType.MESSAGE: {
+                const { message: event } = message;
                 const { serialId } = event;
                 this.relayedEvents.set(event.serialId, { event, acknowledgedBy: new Set() });
                 this.sendToUser(userId, {
@@ -118,8 +118,8 @@ export class Host<TUser extends User, TEventIds> extends Peer<TUser, TEventIds> 
                     serialId,
                 });
                 this.sendHostMessage({
-                    packetType: HostPacketType.RELAYED_EVENT,
-                    event,
+                    packetType: HostPacketType.RELAYED_MESSAGE,
+                    message: event,
                 });
                 break;
             }

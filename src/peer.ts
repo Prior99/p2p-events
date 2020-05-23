@@ -197,8 +197,8 @@ export abstract class Peer<TUser extends User, TEventId> {
                     sequenceNumber: ++this.sequenceNumber,
                 });
                 break;
-            case HostPacketType.RELAYED_EVENT:
-                this.receivedEvent(message.event);
+            case HostPacketType.RELAYED_MESSAGE:
+                this.receivedEvent(message.message);
                 break;
             case HostPacketType.ACKNOWLEDGED_BY_HOST:
                 this.eventAcknowledgedByHost(message.serialId);
@@ -311,8 +311,8 @@ export abstract class Peer<TUser extends User, TEventId> {
         };
         setTimeout(() =>
             this.sendClientMessage({
-                packetType: ClientPacketType.EVENT,
-                event,
+                packetType: ClientPacketType.MESSAGE,
+                message: event,
             }),
         );
         return event;

@@ -145,8 +145,8 @@ describe("Simple", () => {
                         from: clientPeerId,
                         to: hostPeerId,
                         data: {
-                            packetType: ClientPacketType.EVENT,
-                            event: {
+                            packetType: ClientPacketType.MESSAGE,
+                            message: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
                                 originUserId: client.userId,
@@ -169,8 +169,8 @@ describe("Simple", () => {
                         from: hostPeerId,
                         to: clientPeerId,
                         data: {
-                            packetType: HostPacketType.RELAYED_EVENT,
-                            event: {
+                            packetType: HostPacketType.RELAYED_MESSAGE,
+                            message: {
                                 createdDate: expect.any(Number),
                                 eventId: MockEvents.MOCK_EVENT,
                                 originUserId: client.userId,
