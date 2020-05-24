@@ -3,6 +3,15 @@
     "version": "0.1.1",
     "main": "dist/src/index.js",
     "license": "MIT",
+    "author": "Frederick Gnodtke",
+    "repository": "https://github.com/Prior99/p2p-networking",
+    "description": "A simple message-oriented WebRTC (PeerJS) based p2p network.",
+    "keywords": [
+        "webrtc",
+        "peerjs",
+        "p2p",
+        "networking"
+    ],
     "scripts": {
         "generate-version": "mkdir -p generated && node -e 'process.stdout.write(`export const libraryVersion = \"${require(\"./package.json\").version}\";\n`)' > generated/version.ts",
         "prebuild": "yarn generate-version",
