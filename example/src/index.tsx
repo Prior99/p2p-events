@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { Peer, PingInfo, createClient, createHost } from "p2p-networking";
+import { Peer, PingInfo, createClient, createHost, PeerOptions } from "p2p-networking";
 import { Messages, TodoUser, AddTodo, CheckTodo, DeleteTodo, Todo, CurrentState } from "./types";
 import { App } from "./app";
 import { observable } from "mobx";
@@ -8,9 +8,13 @@ import { observable } from "mobx";
 const applicationProtocolVersion = "1.0.0";
 
 async function createPeer(): Promise<Peer<TodoUser, Messages>> {
-    const options = {
+    const options: PeerOptions<TodoUser> = {
         user: { name: "Unknown" },
         applicationProtocolVersion,
+        peerJsOptions: {
+            host: "peerjs.92k.de",
+            secure: true,
+        },
     };
     if (location.hash) {
         return await createClient(options, location.hash.replace("#", ""));
