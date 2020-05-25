@@ -14,24 +14,13 @@ build:
   stage: build
   script:
     - yarn build
-    - yarn docs
-    - cd example 
-    - yarn
-    - yarn build
   artifacts:
     paths:
-      - dist/
-      - docs/
-      - src/
+      - packages/
       - LICENSE
       - package.json
       - README.md
       - yarn.lock
-      - example/dist
-      - example/src
-      - example/index.html
-      - example/package.json
-      - example/yarn.lock
 
 test:
   before_script:
