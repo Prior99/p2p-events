@@ -628,8 +628,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      */
     public close(): void {
         if (!this.peer) {
-            this.throwError(new Error("Can't close peer. Not connected."));
-            return;
+            throw new Error("Can't close peer. Not connected.");
         }
         this.sendClientPacketToHost({
             packetType: ClientPacketType.DISCONNECT,

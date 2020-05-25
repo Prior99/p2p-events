@@ -151,6 +151,8 @@ describe("Simple", () => {
     it("client is not connecting", () => expect(client.isConnecting).toBe(false));
     it("client is disconnected", () => expect(client.isDisconnected).toBe(true));
 
+    it("can't close peer that isn't open", () => expect(() => host.close()).toThrowError());
+
     it("can stop pinging with no effect", () => expect(() => host.stopPing()).not.toThrowError());
 
     describe("sending on closed connection", () => {
