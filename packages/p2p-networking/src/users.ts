@@ -9,7 +9,6 @@ export class Users<TUser extends User> {
             user,
             lastPingDate: Date.now(),
             roundTripTime: undefined,
-            lostPingPackets: 0,
         });
     }
 
@@ -52,7 +51,6 @@ export class Users<TUser extends User> {
         this.users.set(userId, {
             ...userInfo,
             ...update,
-            lostPingPackets: userInfo.lostPingPackets + (update.lostPingPackets ?? 0),
         });
     }
 

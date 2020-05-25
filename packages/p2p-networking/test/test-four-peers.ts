@@ -1,5 +1,5 @@
 jest.mock("peerjs");
-import { Host, Client, ClientPacketType, HostPacketType, MessageFactory, SentMessageHandle } from "../src";
+import { Host, Client, ClientPacketType, HostPacketType, MessageFactory, SentMessageHandle, PingInfo } from "../src";
 import { resetHistory, getHistory } from "./packet-history";
 import { libraryVersion } from "../generated/version";
 
@@ -35,6 +35,7 @@ describe("Four peers", () => {
             clients.map(async (client) => {
                 const clientOpenResult = await client.open(hostPeerId);
                 clientPeerIds.push(clientOpenResult.peerId);
+                await new Promise((resolve) => setTimeout(resolve, 10));
             }),
         );
     });
@@ -54,29 +55,6 @@ describe("Four peers", () => {
                 },
             },
             {
-                from: hostPeerId,
-                to: clientPeerIds[0],
-                data: {
-                    packetType: HostPacketType.WELCOME,
-                    users: [
-                        {
-                            lastPingDate: expect.any(Number),
-                            lostPingPackets: 0,
-                            roundTripTime: undefined,
-                            user: host.user,
-                        },
-                    ].sort((a, b) => a.user.id.localeCompare(b.user.id)),
-                },
-            },
-            {
-                from: hostPeerId,
-                to: clientPeerIds[0],
-                data: {
-                    packetType: HostPacketType.USER_CONNECTED,
-                    user: clients[0].user,
-                },
-            },
-            {
                 from: clientPeerIds[1],
                 to: hostPeerId,
                 data: {
@@ -85,43 +63,6 @@ describe("Four peers", () => {
                         application: "1.0.0",
                         p2pNetwork: libraryVersion,
                     },
-                    user: clients[1].user,
-                },
-            },
-            {
-                from: hostPeerId,
-                to: clientPeerIds[1],
-                data: {
-                    packetType: HostPacketType.WELCOME,
-                    users: [
-                        {
-                            lastPingDate: expect.any(Number),
-                            lostPingPackets: 0,
-                            roundTripTime: undefined,
-                            user: host.user,
-                        },
-                        {
-                            lastPingDate: expect.any(Number),
-                            lostPingPackets: 0,
-                            roundTripTime: undefined,
-                            user: clients[0].user,
-                        },
-                    ].sort((a, b) => a.user.id.localeCompare(b.user.id)),
-                },
-            },
-            {
-                from: hostPeerId,
-                to: clientPeerIds[0],
-                data: {
-                    packetType: HostPacketType.USER_CONNECTED,
-                    user: clients[1].user,
-                },
-            },
-            {
-                from: hostPeerId,
-                to: clientPeerIds[1],
-                data: {
-                    packetType: HostPacketType.USER_CONNECTED,
                     user: clients[1].user,
                 },
             },
@@ -139,25 +80,79 @@ describe("Four peers", () => {
             },
             {
                 from: hostPeerId,
+                to: clientPeerIds[0],
+                data: {
+                    packetType: HostPacketType.WELCOME,
+                    users: [
+                        {
+                            lastPingDate: expect.any(Number),
+                            roundTripTime: undefined,
+                            user: host.user,
+                        },
+                    ].sort((a, b) => a.user.id.localeCompare(b.user.id)),
+                },
+            },
+            {
+                from: hostPeerId,
+                to: clientPeerIds[0],
+                data: {
+                    packetType: HostPacketType.USER_CONNECTED,
+                    user: clients[0].user,
+                },
+            },
+            {
+                from: hostPeerId,
+                to: clientPeerIds[1],
+                data: {
+                    packetType: HostPacketType.WELCOME,
+                    users: [
+                        {
+                            lastPingDate: expect.any(Number),
+                            roundTripTime: undefined,
+                            user: host.user,
+                        },
+                        {
+                            lastPingDate: expect.any(Number),
+                            roundTripTime: undefined,
+                            user: clients[0].user,
+                        },
+                    ].sort((a, b) => a.user.id.localeCompare(b.user.id)),
+                },
+            },
+            {
+                from: hostPeerId,
+                to: clientPeerIds[0],
+                data: {
+                    packetType: HostPacketType.USER_CONNECTED,
+                    user: clients[1].user,
+                },
+            },
+            {
+                from: hostPeerId,
+                to: clientPeerIds[1],
+                data: {
+                    packetType: HostPacketType.USER_CONNECTED,
+                    user: clients[1].user,
+                },
+            },
+            {
+                from: hostPeerId,
                 to: clientPeerIds[2],
                 data: {
                     packetType: HostPacketType.WELCOME,
                     users: [
                         {
                             lastPingDate: expect.any(Number),
-                            lostPingPackets: 0,
                             roundTripTime: undefined,
                             user: host.user,
                         },
                         {
                             lastPingDate: expect.any(Number),
-                            lostPingPackets: 0,
                             roundTripTime: undefined,
                             user: clients[0].user,
                         },
                         {
                             lastPingDate: expect.any(Number),
-                            lostPingPackets: 0,
                             roundTripTime: undefined,
                             user: clients[1].user,
                         },
@@ -280,7 +275,7 @@ describe("Four peers", () => {
                                     test: "something",
                                 },
                             },
-                            targets: [clients[1].userId]
+                            targets: [clients[1].userId],
                         },
                     },
                     {
@@ -390,14 +385,6 @@ describe("Four peers", () => {
                         },
                     },
                     {
-                        from: clientPeerIds[0],
-                        to: hostPeerId,
-                        data: {
-                            packetType: ClientPacketType.ACKNOWLEDGE,
-                            serialId: sendResult.message.serialId,
-                        },
-                    },
-                    {
                         from: hostPeerId,
                         to: clientPeerIds[1],
                         data: {
@@ -414,14 +401,6 @@ describe("Four peers", () => {
                         },
                     },
                     {
-                        from: clientPeerIds[1],
-                        to: hostPeerId,
-                        data: {
-                            packetType: ClientPacketType.ACKNOWLEDGE,
-                            serialId: sendResult.message.serialId,
-                        },
-                    },
-                    {
                         from: hostPeerId,
                         to: clientPeerIds[2],
                         data: {
@@ -435,6 +414,22 @@ describe("Four peers", () => {
                                     test: "something",
                                 },
                             },
+                        },
+                    },
+                    {
+                        from: clientPeerIds[0],
+                        to: hostPeerId,
+                        data: {
+                            packetType: ClientPacketType.ACKNOWLEDGE,
+                            serialId: sendResult.message.serialId,
+                        },
+                    },
+                    {
+                        from: clientPeerIds[1],
+                        to: hostPeerId,
+                        data: {
+                            packetType: ClientPacketType.ACKNOWLEDGE,
+                            serialId: sendResult.message.serialId,
                         },
                     },
                     {
@@ -461,11 +456,35 @@ describe("Four peers", () => {
     describe("ping", () => {
         let spyDate: jest.SpiedFunction<any>;
         const now = 1590160273660;
+        let pingInfos: PingInfo[];
 
-        beforeEach(() => {
+        beforeEach(async () => {
+            pingInfos = [
+                {
+                    userId: host.userId,
+                    roundTripTime: 0,
+                    lastPingDate: now,
+                },
+                {
+                    userId: clients[0].userId,
+                    roundTripTime: 0,
+                    lastPingDate: now,
+                },
+                {
+                    userId: clients[1].userId,
+                    roundTripTime: 0,
+                    lastPingDate: now,
+                },
+                {
+                    userId: clients[2].userId,
+                    roundTripTime: 0,
+                    lastPingDate: now,
+                },
+            ].sort((a, b) => a.userId.localeCompare(b.userId));
             resetHistory();
             spyDate = jest.spyOn(Date, "now").mockImplementation(() => now);
-            host.ping();
+            await host.ping();
+            await new Promise(resolve => setTimeout(resolve));
         });
 
         afterEach(() => spyDate.mockRestore());
@@ -481,29 +500,11 @@ describe("Four peers", () => {
                     },
                 },
                 {
-                    from: clientPeerIds[0],
-                    to: hostPeerId,
-                    data: {
-                        packetType: ClientPacketType.PONG,
-                        initiationDate: now,
-                        sequenceNumber: 1,
-                    },
-                },
-                {
                     from: hostPeerId,
                     to: clientPeerIds[1],
                     data: {
                         packetType: HostPacketType.PING,
                         initiationDate: now,
-                    },
-                },
-                {
-                    from: clientPeerIds[1],
-                    to: hostPeerId,
-                    data: {
-                        packetType: ClientPacketType.PONG,
-                        initiationDate: now,
-                        sequenceNumber: 1,
                     },
                 },
                 {
@@ -515,93 +516,66 @@ describe("Four peers", () => {
                     },
                 },
                 {
+                    from: clientPeerIds[0],
+                    to: hostPeerId,
+                    data: {
+                        packetType: ClientPacketType.PONG,
+                        initiationDate: now,
+                    },
+                },
+                {
+                    from: clientPeerIds[1],
+                    to: hostPeerId,
+                    data: {
+                        packetType: ClientPacketType.PONG,
+                        initiationDate: now,
+                    },
+                },
+                {
                     from: clientPeerIds[2],
                     to: hostPeerId,
                     data: {
                         packetType: ClientPacketType.PONG,
                         initiationDate: now,
-                        sequenceNumber: 1,
+                    },
+                },
+                {
+                    from: hostPeerId,
+                    to: clientPeerIds[0],
+                    data: {
+                        packetType: HostPacketType.PING_INFO,
+                        pingInfos,
+                    },
+                },
+                {
+                    from: hostPeerId,
+                    to: clientPeerIds[1],
+                    data: {
+                        packetType: HostPacketType.PING_INFO,
+                        pingInfos,
+                    },
+                },
+                {
+                    from: hostPeerId,
+                    to: clientPeerIds[2],
+                    data: {
+                        packetType: HostPacketType.PING_INFO,
+                        pingInfos,
                     },
                 },
             ]);
         });
 
-        describe("after publishing the ping info", () => {
-            let pingInfos: any[];
-            beforeEach(() => {
-                resetHistory();
-                host.informPing();
-                pingInfos = [
-                    {
-                        userId: host.userId,
-                        lastPingDate: now,
-                        roundTripTime: 0,
-                        lostPingPackets: 0,
-                    },
-                    {
-                        userId: clients[0].userId,
-                        lastPingDate: now,
-                        roundTripTime: 0,
-                        lostPingPackets: 0,
-                    },
-                    {
-                        userId: clients[1].userId,
-                        lastPingDate: now,
-                        roundTripTime: 0,
-                        lostPingPackets: 0,
-                    },
-                    {
-                        userId: clients[2].userId,
-                        lastPingDate: now,
-                        roundTripTime: 0,
-                        lostPingPackets: 0,
-                    },
-                ].sort((a, b) => a.userId.localeCompare(b.userId));
-            });
-
-            it("has the ping infos available in all peers", () => {
-                [host, ...clients].forEach((peer) =>
-                    expect(
-                        Array.from(peer.pingInfos.entries()).map(
-                            ([userId, { lastPingDate, lostPingPackets: lostPingPackets, roundTripTime }]) => ({
-                                lastPingDate,
-                                lostPingPackets,
-                                roundTripTime,
-                                userId: userId,
-                            }),
-                        ),
-                    ).toEqual(pingInfos),
-                );
-            });
-
-            it("has sent the expected messages", () => {
-                expect(getHistory()).toEqual([
-                    {
-                        from: hostPeerId,
-                        to: clientPeerIds[0],
-                        data: {
-                            packetType: HostPacketType.PING_INFO,
-                            pingInfos,
-                        },
-                    },
-                    {
-                        from: hostPeerId,
-                        to: clientPeerIds[1],
-                        data: {
-                            packetType: HostPacketType.PING_INFO,
-                            pingInfos,
-                        },
-                    },
-                    {
-                        from: hostPeerId,
-                        to: clientPeerIds[2],
-                        data: {
-                            packetType: HostPacketType.PING_INFO,
-                            pingInfos,
-                        },
-                    },
-                ]);
-            });
+        it("has the ping infos available in all peers", () => {
+            [host, ...clients].forEach((peer) =>
+                expect(
+                    Array.from(peer.pingInfos.entries()).map(([userId, { lastPingDate, roundTripTime }]) => ({
+                        lastPingDate,
+                        roundTripTime,
+                        userId: userId,
+                    })),
+                ).toEqual(pingInfos),
+            );
         });
     });
 });

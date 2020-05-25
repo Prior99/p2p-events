@@ -15,10 +15,6 @@ export interface PingInfo {
      * In seconds.
      */
     roundTripTime: number | undefined;
-    /**
-     * The number of ping packets lost.
-     */
-    lostPingPackets: number;
 }
 
 export interface UserInfo<TUser extends User> extends PingInfo {

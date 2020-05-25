@@ -24,7 +24,7 @@ describe("Simple", () => {
 
     beforeEach(() => {
         resetHistory();
-        const options = { timeout: 0.005, applicationProtocolVersion: "1.0.0" };
+        const options = { timeout: 0.01, applicationProtocolVersion: "1.0.0" };
         host = new Host({ ...options, user: { name: "Mr. Host" } });
         client = new Client({ ...options, user: { name: "Mr. Client" } });
     });
@@ -43,12 +43,16 @@ describe("Simple", () => {
             clientPeerId = clientOpenResult.peerId;
         });
 
+        it("host knows both users", () =>
+            expect(host.users).toEqual([host.user, client.user].sort((a, b) => a.id.localeCompare(b.id))));
+        it("client knows both users", () =>
+            expect(client.users).toEqual([host.user, client.user].sort((a, b) => a.id.localeCompare(b.id))));
+
         it("client is client", () => expect(client.isClient).toBe(true));
         it("client is not host", () => expect(client.isHost).toBe(false));
         it("client is connected", () => expect(client.isConnected).toBe(true));
         it("client is not connecting", () => expect(client.isConnecting).toBe(false));
         it("client is not disconnected", () => expect(client.isDisconnected).toBe(false));
-
         it("host is not client", () => expect(host.isClient).toBe(false));
         it("host is host", () => expect(host.isHost).toBe(true));
 
@@ -59,14 +63,14 @@ describe("Simple", () => {
             let spyUserUpdate: jest.MockedFunction<any>;
             let spyUserUpdateRemoved: jest.MockedFunction<any>;
 
-            beforeEach(() => {
+            beforeEach(async () => {
                 spyUserUpdate = jest.fn();
                 spyUserUpdateRemoved = jest.fn();
                 host.on("userupdate", spyUserUpdate);
                 host.on("userupdate", spyUserUpdateRemoved);
                 host.removeEventListener("userupdate", spyUserUpdateRemoved);
                 resetHistory();
-                client.updateUser({ name: "Mr. Newname" });
+                await client.updateUser({ name: "Mr. Newname" });
             });
 
             it("fires the event", () =>
@@ -121,8 +125,8 @@ describe("Simple", () => {
         describe("after disconnecting", () => {
             let spyUserDisconnect: jest.MockedFunction<any>;
 
-            beforeEach(() => {
-                spyUserDisconnect = jest.fn();
+            beforeEach((done) => {
+                spyUserDisconnect = jest.fn(() => done());
                 host.on("userdisconnect", spyUserDisconnect);
                 resetHistory();
                 client.close();
@@ -182,7 +186,6 @@ describe("Simple", () => {
                         users: [
                             {
                                 lastPingDate: expect.any(Number),
-                                lostPingPackets: 0,
                                 roundTripTime: undefined,
                                 user: host.user,
                             },
@@ -302,7 +305,7 @@ describe("Simple", () => {
                     ));
             });
 
-            describe("client sending the event to host", () => {
+            describe("client sending the message to host", () => {
                 let sendResult: SentMessageHandle<MockMessageType, MockPayload>;
 
                 beforeEach(async () => {

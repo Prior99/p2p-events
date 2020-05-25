@@ -112,7 +112,6 @@ export interface ClientPacketDisconnect {
 export interface ClientPacketPong {
     packetType: ClientPacketType.PONG;
     initiationDate: number;
-    sequenceNumber: number;
 }
 
 export interface ClientPacketMessage<TMessageType extends string | number, TPayload> {

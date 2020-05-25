@@ -2,6 +2,7 @@ import PeerJS from "peerjs";
 import { Peer, PeerOpenResult, PeerOptions } from "./peer";
 import { ClientPacket, ClientPacketType, User } from "./types";
 import { libraryVersion } from "../generated/version";
+import { PromiseListener } from "./utils";
 
 /**
  * The result of opening a client connection.
@@ -23,7 +24,6 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
      * The underlying PeerJS connection to the host.
      */
     private connection?: PeerJS.DataConnection;
-
     /**
      * The peer id of the host. Can be used to invite other peers into the network.
      */
@@ -45,13 +45,18 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
      * Connect to a network.
      *
      * @param remotePeerId The id of the peer to connect to.
-     * 
+     *
      * @returns A promise resolving once the client is fully connected.
      */
     public async open(remotePeerId: string): Promise<ClientOpenResult> {
         const peerOpenResult = await super.createLocalPeer();
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
             this.connection = this.peer!.connect(remotePeerId, { reliable: true });
+            const errorListener = (error: unknown): void => {
+                reject(error);
+                this.connection?.off("error", errorListener);
+            };
+            this.connection.on("error", errorListener);
             this.connection.on("open", () => {
                 this.connection!.on("data", (data) => this.handleHostPacket(data));
                 this.sendClientPacketToHost({
@@ -62,7 +67,7 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
                     },
                     user: this.user,
                 });
-                resolve();
+                this.once("connect", () => resolve());
             });
         });
 

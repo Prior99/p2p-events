@@ -1,6 +1,6 @@
 import PeerJS from "peerjs";
-import { debug, InternalError, NetworkError } from "./utils";
-import { User, HostPacket, ClientPacket, ClientPacketType, HostPacketType, Message, NetworkMode } from "./types";
+import { debug, InternalError, NetworkError, PromiseListener } from "./utils";
+import { User, HostPacket, ClientPacket, ClientPacketType, HostPacketType, Message, NetworkMode, ErrorReason } from "./types";
 import { Peer, PeerOpenResult, PeerOptions, peerDefaultOptions } from "./peer";
 import { unreachable } from "./utils";
 import { libraryVersion } from "../generated/version";
@@ -17,11 +17,6 @@ export interface Connection {
      * The id of the user associated with this connection.
      */
     userId: string;
-    /**
-     * A sequencenumber incremented by onw with each ping packet.
-     * Used to detect lost packets.
-     */
-    lastSequenceNumber: number;
 }
 
 /**
@@ -46,6 +41,12 @@ export interface HostOptions<TUser extends User> extends PeerOptions<TUser> {
     pingInterval?: number | undefined;
 }
 
+export interface PendingPing {
+    listener: PromiseListener<[], [Error]>;
+    returned: Set<string>;
+    timeout: ReturnType<typeof setTimeout>;
+}
+
 /**
  * A peer participating as host in the network.
  */
@@ -63,7 +64,6 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
             this.userId,
             {
                 userId: this.userId,
-                lastSequenceNumber: 0,
             },
         ],
     ]);
@@ -71,6 +71,10 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
      * States about messages currently being relayed by this host.
      */
     protected relayedMessageStates = new Map<string, RelayedMessageState<TMessageType, any>>(); // eslint-disable-line
+    /**
+     * A list of listeners waiting for ping packets to return from all clients.
+     */
+    protected pendingPings: PendingPing[] = [];
 
     /**
      * @param inputOptions Options used by this instance.
@@ -91,25 +95,54 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         return this.peer?.id;
     }
 
-    /**
-     * Perform a single ping throughout the network, determining the round trip time or to find disconnected clients.
-     */
-    public ping(): void {
+    private handlePingTimeout(pendingPing: PendingPing): void {
+        this.pendingPings = this.pendingPings.filter((current) => current !== pendingPing);
+        for (const userId of this.connections.keys()) {
+            if (pendingPing.returned.has(userId)) {
+                continue;
+            }
+            this.emitEvent("error", new NetworkError(`Client with id "${userId}" timed out.`), ErrorReason.NETWORK);
+            this.closeConnectionToClient(userId);
+        }
+        pendingPing.listener.reject(new NetworkError("Not all pings returned within timeout."));
+    }
+
+    private closeConnectionToClient(userId: string): void {
+        const connection = this.connections.get(userId);
+        if (!connection) {
+            this.throwError(new InternalError("Can't close connection to unknown client."));
+        }
+        connection?.dataConnection?.close();
+        this.connections.delete(userId);
         this.sendHostPacketToAll({
-            packetType: HostPacketType.PING,
-            initiationDate: Date.now(),
+            packetType: HostPacketType.USER_DISCONNECTED,
+            userId,
         });
     }
 
     /**
-     * Publish the ping information determined by `ping()` with all clients in the network.
+     * Perform a single ping throughout the network, determining the round trip time or to find disconnected clients.
+     * @returns A promise that will resolve once all connected clients answered the ping.
+     *     It will reject if a client timed out.
      */
-    public informPing(): void {
+    public async ping(): Promise<void> {
+        const promise = new Promise((resolve, reject) => {
+            const pendingPing: PendingPing = {
+                listener: { resolve, reject },
+                returned: new Set(),
+                timeout: setTimeout(() => this.handlePingTimeout(pendingPing), this.options.timeout * 1000),
+            };
+            this.pendingPings.push(pendingPing);
+        });
+        this.sendHostPacketToAll({
+            packetType: HostPacketType.PING,
+            initiationDate: Date.now(),
+        });
+        await promise;
         this.sendHostPacketToAll({
             packetType: HostPacketType.PING_INFO,
-            pingInfos: this.userManager.all.map(({ lastPingDate, lostPingPackets, roundTripTime, user }) => ({
+            pingInfos: this.userManager.all.map(({ lastPingDate, roundTripTime, user }) => ({
                 lastPingDate,
-                lostPingPackets,
                 roundTripTime,
                 userId: user.id,
             })),
@@ -172,13 +205,24 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                     userId,
                 });
                 break;
-            case ClientPacketType.PONG:
+            case ClientPacketType.PONG: {
                 this.userManager.updatePingInfo(userId, {
-                    lostPingPackets: packet.sequenceNumber - connection.lastSequenceNumber - 1,
                     roundTripTime: (Date.now() - packet.initiationDate) / 1000,
                     lastPingDate: Date.now(),
                 });
+                const pending = this.pendingPings.find(pending => !pending.returned.has(userId));
+                if (!pending) {
+                    this.throwError(new InternalError("Received pong for unknown ping."));
+                    return;
+                }
+                pending.returned.add(userId);
+                if (pending.returned.size === this.connections.size) {
+                    clearTimeout(pending.timeout);
+                    this.pendingPings = this.pendingPings.filter(other => other !== pending);
+                    pending.listener.resolve();
+                }
                 break;
+            }
             case ClientPacketType.MESSAGE: {
                 const { message, targets } = packet;
                 const { serialId } = message;
@@ -280,7 +324,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                         });
                         break;
                     }
-                    this.connections.set(userId, { dataConnection, lastSequenceNumber: 0, userId });
+                    this.connections.set(userId, { dataConnection, userId });
                     this.sendHostPacketToPeer(dataConnection, {
                         packetType: HostPacketType.WELCOME,
                         users: this.userManager.all,
@@ -311,10 +355,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         }
         this.peer.on("connection", (connection) => this.handleConnect(connection));
         if (this.options.pingInterval !== undefined) {
-            setInterval(() => {
-                this.ping();
-                this.informPing();
-            }, this.options.pingInterval * 1000);
+            setInterval(() => this.ping(), this.options.pingInterval * 1000);
         }
         this.networkMode = NetworkMode.HOST;
         return openResult;

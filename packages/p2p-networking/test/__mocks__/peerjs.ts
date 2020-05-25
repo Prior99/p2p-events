@@ -9,7 +9,24 @@ const openConnections: {
     handler: (...args: any[]) => any;
 }[] = [];
 
-export class MockPeerJS {
+function send(from: string, to: string, data: any): void {
+    addEntry({
+        from,
+        to,
+        data,
+    });
+    setTimeout(() => {
+        openConnections
+            .filter((connection) => from === connection.from && to === connection.to)
+            .forEach(({ handler }) => handler(data));
+    });
+}
+
+function addConnection(from: string, to: string, handler: (...args: any[]) => any): void {
+    openConnections.push({ from, to, handler });
+}
+
+export default class MockPeerJS {
     public id = uuid();
     private listeners: { eventName: string; handler: (...args: any[]) => any }[] = [];
 
@@ -21,8 +38,16 @@ export class MockPeerJS {
     public destroy = jest.fn();
 
     public on = jest.fn((eventName, handler) => {
-        if (eventName === "open") { handler(); }
+        if (eventName === "open") {
+            setTimeout(() => handler());
+        }
         this.listeners.push({ eventName, handler });
+    });
+
+    public off = jest.fn((eventName, handler) => {
+        this.listeners = this.listeners.filter(
+            (listener) => listener.eventName !== eventName && listener.handler !== handler,
+        );
     });
 
     private invokeListener(eventName: string, ...args: any[]): void {
@@ -35,51 +60,31 @@ export class MockPeerJS {
         connections.get(remoteId)!.push(this.id);
         instances.get(remoteId)!.invokeListener("connection", {
             on: jest.fn((eventName: string, handler: (...args: any[]) => any) => {
-                if (eventName === "open") {
-                    handler();
+                if (eventName === "error") {
                     return;
                 }
-                openConnections.push({
-                    from: this.id,
-                    to: remoteId,
-                    handler,
-                });
+                if (eventName === "open") {
+                    setTimeout(() => handler());
+                    return;
+                }
+                addConnection(this.id, remoteId, handler);
             }),
-            send: jest.fn((data: any) => {
-                addEntry({
-                    from: remoteId,
-                    to: this.id,
-                    data,
-                });
-                openConnections
-                    .filter(({ from, to }) => from === remoteId && to === this.id)
-                    .forEach(({ handler }) => handler(data));
-            }),
+            off: jest.fn(() => undefined),
+            send: jest.fn((data: any) => send(remoteId, this.id, data)),
         });
         return {
             on: jest.fn((eventName: string, handler: (...args: any[]) => any) => {
-                if (eventName === "open") {
-                    handler();
+                if (eventName === "error") {
                     return;
                 }
-                openConnections.push({
-                    from: remoteId,
-                    to: this.id,
-                    handler,
-                });
+                if (eventName === "open") {
+                    setTimeout(() => handler());
+                    return;
+                }
+                addConnection(remoteId, this.id, handler);
             }),
-            send: jest.fn((data: any) => {
-                addEntry({
-                    from: this.id,
-                    to: remoteId,
-                    data,
-                });
-                openConnections
-                    .filter(({ from, to }) => from === this.id && to === remoteId)
-                    .forEach(({ handler }) => handler(data));
-            }),
+            off: jest.fn(() => undefined),
+            send: jest.fn((data: any) => send(this.id, remoteId, data)),
         };
     });
 }
-
-export default MockPeerJS;

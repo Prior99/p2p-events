@@ -237,11 +237,6 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      */
     protected ignoredSerialIds = new Set<string>();
     /**
-     * The internal sequence number used for responding to ping packets. This integer is increased by
-     * one for every responded pong packet and is used to determine packet loss.
-     */
-    protected sequenceNumber = 0;
-    /**
      * Event listeners for different events registered on this peer.
      */
     protected eventListeners: {
@@ -255,6 +250,11 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         userupdate: new Set(),
         error: new Set(),
     };
+    /**
+     * Listeners for the result of updating the user. `.updateUser()` returns a promise that should resolve
+     * once the user has been updated. This promise is stored here.
+     */
+    protected updateUserListeners: PromiseListener<[TUser], [Error]>[] = [];
 
     /**
      * Create a new peer.
@@ -329,8 +329,8 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      */
     public get pingInfos(): Map<string, PingInfo> {
         const map = new Map<string, PingInfo>();
-        for (const { user, lastPingDate, lostPingPackets: lostPingPackets, roundTripTime } of this.userManager.all) {
-            map.set(user.id, { lastPingDate, lostPingPackets: lostPingPackets, roundTripTime });
+        for (const { user, lastPingDate, roundTripTime } of this.userManager.all) {
+            map.set(user.id, { lastPingDate, roundTripTime });
         }
         return map;
     }
@@ -361,6 +361,22 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
     public addEventListener = this.on;
 
     /**
+     * The same as `Peer.on`, but the listener will only be called once (on the first occurrence of the event).
+     * @param eventName The name of the event to listen for. See `Peer.on`.
+     * @param handler The handler that shall be called just once.
+     */
+    public once<TPeerEvent extends PeerEvent<TMessageType, TUser>>(
+        eventName: TPeerEvent,
+        handler: (...args: PeerEventArguments<TMessageType, TPeerEvent, TUser>) => void,
+    ): void {
+        const listener = (...args: PeerEventArguments<TMessageType, TPeerEvent, TUser>): void => {
+            handler(...args);
+            this.removeEventListener(eventName, listener);
+        };
+        this.on(eventName, listener);
+    }
+
+    /**
      * Remove a listener that was previously registered for an event.
      * @param eventName Name of the event to remove this listener for.
      * @param handler The handler to remove.
@@ -388,12 +404,14 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
     /**
      * Update the own user on the network.
      * @param user A patch for the own user to change.
+     * @returns A promise that will resolve with the updated user once the user was updated.
      */
-    public updateUser(user: Omit<Partial<TUser>, "id">): void {
+    public updateUser(user: Omit<Partial<TUser>, "id">): Promise<TUser> {
         this.sendClientPacketToHost({
             packetType: ClientPacketType.UPDATE_USER,
             user,
         });
+        return new Promise((resolve, reject) => this.updateUserListeners.push({ resolve, reject }));
     }
 
     /**
@@ -503,7 +521,6 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 this.sendClientPacketToHost({
                     packetType: ClientPacketType.PONG,
                     initiationDate: packet.initiationDate,
-                    sequenceNumber: ++this.sequenceNumber,
                 });
                 break;
             case HostPacketType.RELAYED_MESSAGE: {
@@ -577,10 +594,16 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 try {
                     this.userManager.updateUser(packet.user.id, packet.user);
                 } catch (err) {
+                    if (packet.user.id === this.userId) {
+                        this.updateUserListeners.shift()?.reject(err);
+                    }
                     this.throwError(err);
                     return;
                 }
                 this.emitEvent("userupdate", this.userManager.getUser(packet.user.id)!);
+                if (packet.user.id === this.userId) {
+                    this.updateUserListeners.shift()?.resolve(this.userManager.getUser(packet.user.id)!);
+                }
                 break;
             case HostPacketType.INCOMPATIBLE:
                 this.throwError(new IncompatibilityError("Incompatible with host.", this.versions, packet.versions));
