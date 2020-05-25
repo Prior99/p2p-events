@@ -35,6 +35,7 @@ test:
 lint:
   before_script:
     - yarn
+    - yarn docs
   stage: build
   script:
     - yarn lint
