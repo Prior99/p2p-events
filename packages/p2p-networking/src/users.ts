@@ -20,17 +20,9 @@ export class Users<TUser extends User> {
         return this.users.get(userId)?.user;
     }
 
-    public getRoundTripTime(userId: string): number | undefined {
-        return this.users.get(userId)?.roundTripTime;
-    }
-
-    public getLastPing(userId: string): Date | undefined {
-        const user = this.users.get(userId);
-        return user ? new Date(user.lastPingDate) : undefined;
-    }
-
     public updateUser(userId: string, update: Omit<Partial<TUser>, "id">): void {
         const userInfo = this.users.get(userId);
+        /* istanbul ignore if */
         if (!userInfo) {
             throw new InternalError(`No user with id "${userId}".`);
         }
@@ -45,6 +37,7 @@ export class Users<TUser extends User> {
 
     public updatePingInfo(userId: string, update: Partial<PingInfo>): void {
         const userInfo = this.users.get(userId);
+        /* istanbul ignore if */
         if (!userInfo) {
             throw new InternalError(`No user with id "${userId}".`);
         }

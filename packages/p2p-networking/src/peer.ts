@@ -581,7 +581,8 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 for (const { userId, ...pingInfo } of packet.pingInfos) {
                     try {
                         this.userManager.updatePingInfo(userId, pingInfo);
-                    } catch (err) {
+                    } catch (err) /* istanbul ignore next */ {
+                        
                         this.throwError(err);
                         return;
                     }
@@ -609,6 +610,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 this.throwError(new IncompatibilityError("Incompatible with host.", this.versions, packet.versions));
                 break;
             default:
+                /* istanbul ignore next */
                 unreachable(packet);
         }
     }

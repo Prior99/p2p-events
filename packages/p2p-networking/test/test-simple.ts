@@ -399,6 +399,49 @@ describe("Simple", () => {
                 clientMessage.subscribe(spyMessageClient);
             });
 
+            describe("with the client ignoring the serial from itself", () => {
+                let hostAwaited: boolean;
+                let allAwaited: boolean;
+                let hostError: Error;
+                let allError: Error;
+
+                beforeEach(async () => {
+                    hostAwaited = false;
+                    allAwaited = false;
+                    const message = clientMessage.send({ test: "some" });
+                    client.ignoreSerialId(message.message.serialId);
+                    await Promise.race([
+                        message
+                            .waitForHost()
+                            .then(() => (hostAwaited = true))
+                            .catch((err) => (hostError = err)),
+                        new Promise((resolve) => setTimeout(resolve, 1)),
+                    ]);
+                    await Promise.race([
+                        message
+                            .waitForAll()
+                            .then(() => (allAwaited = true))
+                            .catch((err) => (allError = err)),
+                        new Promise((resolve) => setTimeout(resolve, 1)),
+                    ]);
+                });
+
+                it("doesn't resolve for host", () => expect(hostAwaited).toBe(false));
+                it("doesn't resolve for all", () => expect(allAwaited).toBe(false));
+                it("has error for host", () => expect(hostError).toEqual(expect.any(Error)));
+                it("has error for all", () => expect(allError).toEqual(expect.any(Error)));
+            });
+
+            describe("with the client ignoring the serial from the host", () => {
+                beforeEach(async () => {
+                    const message = hostMessage.send({ test: "some" });
+                    client.ignoreSerialId(message.message.serialId);
+                    await message.waitForHost();
+                });
+
+                it("doesn't call the subscription", () => expect(spyMessageClient).not.toHaveBeenCalled());
+            });
+
             describe("with the client being broken", () => {
                 beforeEach(() => {
                     (client as any).handleHostPacket = () => undefined;
