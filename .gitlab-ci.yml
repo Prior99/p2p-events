@@ -14,6 +14,7 @@ build:
   stage: build
   script:
     - yarn build
+    - yarn docs
   artifacts:
     paths:
       - packages/
@@ -35,7 +36,6 @@ test:
 lint:
   before_script:
     - yarn
-    - yarn docs
   stage: build
   script:
     - yarn lint
