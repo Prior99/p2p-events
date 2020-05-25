@@ -11,7 +11,7 @@ export class CollaborationLink extends React.Component<CollaborationLinkProps> {
         const { peerId } = this.props;
         const url = `${location.origin}${location.pathname}#${peerId}`;
         return peerId ? (
-            <a href={url} target="_blank">
+            <a href={url} target="_blank" rel="noreferrer">
                 Link
             </a>
         ) : (

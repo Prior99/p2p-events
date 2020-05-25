@@ -1,0 +1,62 @@
+{
+    "name": "p2p-networking",
+    "version": "0.1.1",
+    "main": "dist/src/index.js",
+    "license": "MIT",
+    "author": "Frederick Gnodtke",
+    "repository": "https://github.com/Prior99/p2p-networking",
+    "description": "A simple message-oriented WebRTC (PeerJS) based p2p network.",
+    "keywords": [
+        "webrtc",
+        "peerjs",
+        "p2p",
+        "networking"
+    ],
+    "scripts": {
+        "generate-version": "mkdir -p generated && node -e 'process.stdout.write(`export const libraryVersion = \"${require(\"./package.json\").version}\";\n`)' > generated/version.ts",
+        "prebuild": "yarn generate-version",
+        "build": "tsc -p .",
+        "pretest": "yarn generate-version",
+        "test": "jest",
+        "prepublish": "yarn build",
+        "lint": "eslint --max-warnings 0 src/**/*.ts test/**/*.ts",
+        "predocs": "yarn generate-version",
+        "docs": "typedoc --mode file --out docs/ --exclude '**/test-*.ts,**/report-viewer/**/*' src/"
+    },
+    "eslintConfig": {
+        "extends": "../../eslint-defaults.json"
+    },
+    "typings": "dist/src/index.d.ts",
+    "files": [
+        "dist",
+        "src",
+        "package.json",
+        "README.md",
+        "LICENSE",
+        "generated"
+    ],
+    "jest": {
+        "preset": "../../jest-defaults.json"
+    },
+    "dependencies": {
+        "debug": "^4.1.1",
+        "peerjs": "^1.2.0",
+        "uuid": "^8.1.0"
+    },
+    "devDependencies": {
+        "@types/debug": "^4.1.5",
+        "@types/jest": "^25.2.3",
+        "@types/peerjs": "^1.1.0",
+        "@types/uuid": "^8.0.0",
+        "@typescript-eslint/eslint-plugin": "^3.0.0",
+        "@typescript-eslint/parser": "^3.0.0",
+        "eslint": "^6.0.0",
+        "eslint-config-prettier": "^6.11.0",
+        "eslint-plugin-prettier": "^3.1.3",
+        "jest": "^26.0.1",
+        "prettier": "^2.0.5",
+        "ts-jest": "^26.0.0",
+        "typedoc": "^0.17.7",
+        "typescript": "^3.9.3"
+    }
+}

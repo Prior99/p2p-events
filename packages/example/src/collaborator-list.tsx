@@ -1,7 +1,7 @@
 import * as React from "react";
 import { observer } from "mobx-react";
 import { TodoUser } from "./types";
-import { PingInfo } from "../../dist/src";
+import { PingInfo } from "p2p-networking";
 
 export interface CollaboratorListProps {
     collaborators: TodoUser[];

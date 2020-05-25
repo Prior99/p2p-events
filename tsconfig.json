@@ -8,8 +8,11 @@
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
         "sourceMap": true,
-        "outDir": "./dist",
         "declaration": true,
+        "baseUrl": "packages",
+        "paths": {
+            "p2p-networking": ["p2p-networking/src"]
+        }
     },
-    "include": ["./src", "./generated"]
+    "compileOnSave": true
 }

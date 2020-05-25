@@ -1,0 +1,12 @@
+{
+    "collectCoverage": true,
+    "moduleFileExtensions": ["ts", "js"],
+    "preset": "ts-jest",
+    "transform": {
+        "\\.ts$": "ts-jest"
+    },
+    "coverageReporters": ["lcov", "json", "text"],
+    "testMatch": ["<rootDir>/test/**/test-*.ts"],
+    "coveragePathIgnorePatterns": ["/node_modules/", "/test/"],
+    "collectCoverageFrom": ["<rootDir>/src/**/*.ts", "<rootDir>/src/**/*.tsx"]
+}
