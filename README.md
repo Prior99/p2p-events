@@ -7,7 +7,7 @@ A simple message-oriented [WebRTC](https://webrtc.org/) ([PeerJS](https://peerjs
 
 ## Resources
 
-- [Example code](./example/src)
+- [Example code](./packages/example/src)
 - [Api Reference](https://prior99.gitlab.io/p2p-networking/index.html)
 - [Example](https://prior99.gitlab.io/p2p-networking/example/index.html)
 

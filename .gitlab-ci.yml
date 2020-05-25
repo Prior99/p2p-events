@@ -53,8 +53,8 @@ lint:
 pages:
   stage: deploy
   script:
-    - mv docs public
-    - mv example public/example
+    - mv packages/p2p-networking/docs public
+    - mv packages/example public/example
   dependencies:
     - build
   artifacts:
