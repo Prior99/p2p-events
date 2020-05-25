@@ -1,8 +1,7 @@
 import PeerJS from "peerjs";
 import { Peer, PeerOpenResult, PeerOptions } from "./peer";
-import { ClientPacket, ClientPacketType, User } from "./types";
+import { ClientPacket, ClientPacketType, User, NetworkMode } from "./types";
 import { libraryVersion } from "../generated/version";
-import { PromiseListener } from "./utils";
 
 /**
  * The result of opening a client connection.
@@ -50,11 +49,12 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
      */
     public async open(remotePeerId: string): Promise<ClientOpenResult> {
         const peerOpenResult = await super.createLocalPeer();
+        this.networkMode = NetworkMode.CLIENT;
         await new Promise((resolve, reject) => {
             this.connection = this.peer!.connect(remotePeerId, { reliable: true });
             const errorListener = (error: unknown): void => {
+                this.connection!.off("error", errorListener);
                 reject(error);
-                this.connection?.off("error", errorListener);
             };
             this.connection.on("error", errorListener);
             this.connection.on("open", () => {
@@ -67,7 +67,15 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
                     },
                     user: this.user,
                 });
-                this.once("connect", () => resolve());
+                const peerErrorListener = (error: Error): void => {
+                    this.removeEventListener("error", peerErrorListener);
+                    reject(error);
+                };
+                this.once("error", peerErrorListener);
+                this.once("connect", () => {
+                    this.removeEventListener("error", peerErrorListener);
+                    resolve();
+                });
             });
         });
 

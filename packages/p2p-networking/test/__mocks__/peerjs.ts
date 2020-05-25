@@ -57,24 +57,30 @@ export default class MockPeerJS {
     }
 
     public connect = jest.fn((remoteId) => {
-        connections.get(remoteId)!.push(this.id);
-        instances.get(remoteId)!.invokeListener("connection", {
-            on: jest.fn((eventName: string, handler: (...args: any[]) => any) => {
-                if (eventName === "error") {
-                    return;
-                }
-                if (eventName === "open") {
-                    setTimeout(() => handler());
-                    return;
-                }
-                addConnection(this.id, remoteId, handler);
-            }),
-            off: jest.fn(() => undefined),
-            send: jest.fn((data: any) => send(remoteId, this.id, data)),
-        });
+        if (connections.has(remoteId)) {
+            connections.get(remoteId)!.push(this.id);
+            instances.get(remoteId)!.invokeListener("connection", {
+                on: jest.fn((eventName: string, handler: (...args: any[]) => any) => {
+                    if (eventName === "error") {
+                        return;
+                    }
+                    if (eventName === "open") {
+                        setTimeout(() => handler());
+                        return;
+                    }
+                    addConnection(this.id, remoteId, handler);
+                }),
+                off: jest.fn(() => undefined),
+                send: jest.fn((data: any) => send(remoteId, this.id, data)),
+                close: jest.fn(),
+            });
+        }
         return {
             on: jest.fn((eventName: string, handler: (...args: any[]) => any) => {
                 if (eventName === "error") {
+                    if (remoteId === "broken-id") {
+                        setTimeout(() => handler(new Error("Some error.")));
+                    }
                     return;
                 }
                 if (eventName === "open") {
@@ -85,6 +91,7 @@ export default class MockPeerJS {
             }),
             off: jest.fn(() => undefined),
             send: jest.fn((data: any) => send(this.id, remoteId, data)),
+            close: jest.fn(),
         };
     });
 }

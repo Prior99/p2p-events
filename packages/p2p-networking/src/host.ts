@@ -1,6 +1,15 @@
 import PeerJS from "peerjs";
 import { debug, InternalError, NetworkError, PromiseListener } from "./utils";
-import { User, HostPacket, ClientPacket, ClientPacketType, HostPacketType, Message, NetworkMode, ErrorReason } from "./types";
+import {
+    User,
+    HostPacket,
+    ClientPacket,
+    ClientPacketType,
+    HostPacketType,
+    Message,
+    NetworkMode,
+    ErrorReason,
+} from "./types";
 import { Peer, PeerOpenResult, PeerOptions, peerDefaultOptions } from "./peer";
 import { unreachable } from "./utils";
 import { libraryVersion } from "../generated/version";
@@ -75,6 +84,10 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
      * A list of listeners waiting for ping packets to return from all clients.
      */
     protected pendingPings: PendingPing[] = [];
+    /**
+     * An optional interval handler for pinging.
+     */
+    protected pingInterval?: ReturnType<typeof setInterval>;
 
     /**
      * @param inputOptions Options used by this instance.
@@ -107,12 +120,20 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         pendingPing.listener.reject(new NetworkError("Not all pings returned within timeout."));
     }
 
-    private closeConnectionToClient(userId: string): void {
+    /**
+     * Closes the connection to one specific client.
+     * @param userId The user id of the user associated with the connection to close.
+     */
+    public closeConnectionToClient(userId: string): void {
         const connection = this.connections.get(userId);
+        if (userId === this.userId) {
+            throw new Error("Host can't close connection to itself.");
+        }
         if (!connection) {
             this.throwError(new InternalError("Can't close connection to unknown client."));
+            return;
         }
-        connection?.dataConnection?.close();
+        connection.dataConnection!.close();
         this.connections.delete(userId);
         this.sendHostPacketToAll({
             packetType: HostPacketType.USER_DISCONNECTED,
@@ -169,6 +190,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
      */
     protected sendHostPacketToUser<TPayload>(userId: string, packet: HostPacket<TMessageType, TUser, TPayload>): void {
         const connection = this.connections.get(userId);
+        /* istanbul ignore if */
         if (!connection) {
             this.throwError(new InternalError(`Can't send message to unknown user with id "${userId}".`));
             return;
@@ -189,11 +211,13 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
     protected handleClientPacket<TPayload>(userId: string, packet: ClientPacket<TMessageType, TUser, TPayload>): void {
         debug("Received packet from client of type %s: %O", packet.packetType, packet);
         const connection = this.connections.get(userId);
+        /* istanbul ignore if */
         if (!connection) {
             this.throwError(new InternalError(`Connection meta for user "${userId}" missing.`));
             return;
         }
         switch (packet.packetType) {
+            /* istanbul ignore next */
             case ClientPacketType.HELLO:
                 this.throwError(
                     new InternalError("Received unexpected hello message from client. Connection already initialized."),
@@ -210,7 +234,8 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                     roundTripTime: (Date.now() - packet.initiationDate) / 1000,
                     lastPingDate: Date.now(),
                 });
-                const pending = this.pendingPings.find(pending => !pending.returned.has(userId));
+                const pending = this.pendingPings.find((pending) => !pending.returned.has(userId));
+                /* istanbul ignore if */
                 if (!pending) {
                     this.throwError(new InternalError("Received pong for unknown ping."));
                     return;
@@ -218,7 +243,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                 pending.returned.add(userId);
                 if (pending.returned.size === this.connections.size) {
                     clearTimeout(pending.timeout);
-                    this.pendingPings = this.pendingPings.filter(other => other !== pending);
+                    this.pendingPings = this.pendingPings.filter((other) => other !== pending);
                     pending.listener.resolve();
                 }
                 break;
@@ -247,6 +272,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
             case ClientPacketType.ACKNOWLEDGE: {
                 const { serialId } = packet;
                 const relayedMessageState = this.relayedMessageStates.get(serialId);
+                /* istanbul ignore if */
                 if (!relayedMessageState) {
                     this.throwError(
                         new InternalError(
@@ -255,6 +281,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                     );
                     return;
                 }
+                /* istanbul ignore if */
                 if (relayedMessageState.acknowledgedBy.has(userId)) {
                     this.throwError(
                         new InternalError(`User "${userId}" acknowledged message with serial id "${serialId}" twice.`),
@@ -275,6 +302,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                 break;
             }
             case ClientPacketType.UPDATE_USER:
+                /* istanbul ignore if */
                 if ("id" in packet.user) {
                     this.throwError(new InternalError(`User "${userId}" can't update user id.`));
                     return;
@@ -287,6 +315,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                     },
                 });
                 break;
+            /* istanbul ignore next */
             default:
                 unreachable(packet);
         }
@@ -341,6 +370,19 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         });
     }
 
+    public startPing(): void {
+        if (this.options.pingInterval !== undefined) {
+            this.pingInterval = setInterval(() => this.ping(), this.options.pingInterval * 1000);
+        }
+    }
+
+    public stopPing(): void {
+        if (!this.pingInterval) {
+            return;
+        }
+        clearInterval(this.pingInterval);
+    }
+
     /**
      * Start accepting connections.
      * @returns Promise that resolves once the host is ready to accept connections.
@@ -348,15 +390,8 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
     public async open(): Promise<PeerOpenResult> {
         this.networkMode = NetworkMode.CONNECTING;
         const openResult = await super.createLocalPeer();
-        if (!this.peer) {
-            const error = new NetworkError("PeerJS failed to initialize.");
-            this.throwError(error);
-            throw error;
-        }
-        this.peer.on("connection", (connection) => this.handleConnect(connection));
-        if (this.options.pingInterval !== undefined) {
-            setInterval(() => this.ping(), this.options.pingInterval * 1000);
-        }
+        this.peer!.on("connection", (connection) => this.handleConnect(connection));
+        this.startPing();
         this.networkMode = NetworkMode.HOST;
         return openResult;
     }

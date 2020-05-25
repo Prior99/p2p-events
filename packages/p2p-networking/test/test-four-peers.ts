@@ -24,9 +24,14 @@ describe("Four peers", () => {
 
     beforeEach(async () => {
         resetHistory();
-        host = new Host({ applicationProtocolVersion: "1.0.0", user: { name: "Mr. Host" } });
+        host = new Host({ timeout: 0.1, applicationProtocolVersion: "1.0.0", user: { name: "Mr. Host" } });
         clients = Array.from({ length: 3 }).map(
-            (_, index) => new Client({ applicationProtocolVersion: "1.0.0", user: { name: `Mr. Client #${index}` } }),
+            (_, index) =>
+                new Client({
+                    timeout: 0.1,
+                    applicationProtocolVersion: "1.0.0",
+                    user: { name: `Mr. Client #${index}` },
+                }),
         );
         const hostOpenResult = await host.open();
         hostPeerId = hostOpenResult.peerId;
@@ -453,6 +458,45 @@ describe("Four peers", () => {
         });
     });
 
+    describe("with a client being broken", () => {
+        let pingResult: any;
+        let spyDisconnect: jest.MockedFunction<any>;
+
+        beforeEach(async () => {
+            spyDisconnect = jest.fn();
+            clients[0].on("userdisconnect", spyDisconnect);
+            (clients[1] as any).handleHostPacket = () => undefined;
+            try {
+                await host.ping();
+            } catch (err) {
+                pingResult = err;
+            }
+            await new Promise((resolve) => setTimeout(resolve));
+        });
+
+        it("fired 'userdisconnect'", () => expect(spyDisconnect).toHaveBeenCalledWith(clients[1].userId));
+
+        it("rejects the ping", () => expect(pingResult).toEqual(expect.any(Error)));
+
+        it("all peers removed the user", () => {
+            const expected = [
+                {
+                    id: host.userId,
+                    name: "Mr. Host",
+                },
+                {
+                    id: clients[0].userId,
+                    name: "Mr. Client #0",
+                },
+                {
+                    id: clients[2].userId,
+                    name: "Mr. Client #2",
+                },
+            ].sort((a, b) => a.id.localeCompare(b.id));
+            [host, clients[0], clients[2]].forEach((peer) => expect(peer.users).toEqual(expected));
+        });
+    });
+
     describe("ping", () => {
         let spyDate: jest.SpiedFunction<any>;
         const now = 1590160273660;
@@ -484,7 +528,7 @@ describe("Four peers", () => {
             resetHistory();
             spyDate = jest.spyOn(Date, "now").mockImplementation(() => now);
             await host.ping();
-            await new Promise(resolve => setTimeout(resolve));
+            await new Promise((resolve) => setTimeout(resolve));
         });
 
         afterEach(() => spyDate.mockRestore());

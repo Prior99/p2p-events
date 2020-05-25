@@ -29,6 +29,7 @@ describe("PeerJS mock", () => {
                     on: expect.any(Function),
                     off: expect.any(Function),
                     send: expect.any(Function),
+                    close: expect.any(Function),
                 });
             });
         });

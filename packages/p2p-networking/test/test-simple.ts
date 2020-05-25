@@ -1,7 +1,20 @@
 jest.mock("peerjs");
-import { Host, Client, ClientPacketType, HostPacketType, MessageFactory, SentMessageHandle } from "../src";
+import {
+    Host,
+    Client,
+    ClientPacketType,
+    HostPacketType,
+    MessageFactory,
+    SentMessageHandle,
+    ErrorReason,
+    createHost,
+    createClient,
+    IncompatibilityError,
+    IncompatibleVersion,
+} from "../src";
 import { resetHistory, getHistory } from "./packet-history";
 import { libraryVersion } from "../generated/version";
+import * as peerjs from "peerjs";
 
 interface MockUser {
     id: string;
@@ -15,10 +28,111 @@ const enum MockMessageType {
 interface MockPayload {
     test: string;
 }
+let host: Host<MockUser, MockMessageType>;
+let client: Client<MockUser, MockMessageType>;
+
+describe("With ping interval", () => {
+    let spyPing: jest.MockedFunction<any>;
+
+    beforeEach(async (done) => {
+        spyPing = jest.fn(() => {
+            host.stopPing();
+            done();
+        });
+        host = await createHost({
+            pingInterval: 0.001,
+            applicationProtocolVersion: "some",
+            user: { name: "test" },
+        });
+        client = await createClient(
+            { applicationProtocolVersion: "some", user: { name: "test" } },
+            host.hostConnectionId!,
+        );
+        resetHistory();
+        client.once("pinginfo", spyPing);
+    });
+
+    it("calls the ping handler", () => expect(spyPing).toBeCalled());
+});
+
+describe("createClient() and createHost()", () => {
+    beforeEach(async () => {
+        host = await createHost({ applicationProtocolVersion: "some", user: { name: "test" } });
+        client = await createClient(
+            { applicationProtocolVersion: "some", user: { name: "test" } },
+            host.hostConnectionId!,
+        );
+    });
+
+    it("client is client", () => expect(client.isClient).toBe(true));
+    it("client is not host", () => expect(client.isHost).toBe(false));
+    it("client is connected", () => expect(client.isConnected).toBe(true));
+    it("client is not connecting", () => expect(client.isConnecting).toBe(false));
+    it("client is not disconnected", () => expect(client.isDisconnected).toBe(false));
+    it("host is not client", () => expect(host.isClient).toBe(false));
+    it("host is host", () => expect(host.isHost).toBe(true));
+});
+
+describe("With the peer not being created", () => {
+    beforeEach(() =>
+        jest.spyOn(peerjs as any, "default").mockImplementation(
+            () =>
+                class {
+                    public on(name: string, handler: any): void {
+                        if (name === "error") {
+                            handler(new Error("some error"));
+                        }
+                    }
+                },
+        ),
+    );
+
+    afterEach(() => jest.spyOn(peerjs as any, "default").mockRestore());
+
+    it("can't create host", () =>
+        expect(createHost({ applicationProtocolVersion: "some", user: { name: "test" } })).rejects.toEqual(
+            expect.any(Error),
+        ));
+});
+
+describe("Incompatible versions", () => {
+    let rejectResult: any;
+
+    beforeEach(async () => {
+        host = await createHost({ applicationProtocolVersion: "1", user: { name: "test" } });
+        try {
+            client = await createClient(
+                { applicationProtocolVersion: "2", user: { name: "test" } },
+                host.hostConnectionId!,
+            );
+        } catch (err) {
+            rejectResult = err;
+        }
+    });
+
+    it("can't connect", () => {
+        expect(rejectResult).toEqual(expect.any(IncompatibilityError));
+        expect(rejectResult.incompatibleVersions).toEqual([IncompatibleVersion.APPLICATION_PROTOCOL_VERSION]);
+        expect(rejectResult.localVersions).toEqual({ application: "2", p2pNetwork: libraryVersion });
+        expect(rejectResult.hostVersions).toEqual({ application: "1", p2pNetwork: libraryVersion });
+    });
+});
+
+describe("With peerjs encountering an error", () => {
+    let rejectResult: any;
+
+    beforeEach(async () => {
+        try {
+            await client.open("broken-id");
+        } catch (err) {
+            rejectResult = err;
+        }
+    });
+
+    it("rejects", () => expect(rejectResult).toEqual(expect.any(Error)));
+});
 
 describe("Simple", () => {
-    let host: Host<MockUser, MockMessageType>;
-    let client: Client<MockUser, MockMessageType>;
     let hostPeerId: string;
     let clientPeerId: string;
 
@@ -29,14 +143,39 @@ describe("Simple", () => {
         client = new Client({ ...options, user: { name: "Mr. Client" } });
     });
 
+    it("host has no connection id", () => expect(host.hostConnectionId).toBe(undefined));
+
     it("client is not client", () => expect(client.isClient).toBe(false));
     it("client is not host", () => expect(client.isHost).toBe(false));
     it("client is not connected", () => expect(client.isConnected).toBe(false));
     it("client is not connecting", () => expect(client.isConnecting).toBe(false));
     it("client is disconnected", () => expect(client.isDisconnected).toBe(true));
 
+    it("can stop pinging with no effect", () => expect(() => host.stopPing()).not.toThrowError());
+
+    describe("sending on closed connection", () => {
+        let spyError: jest.MockedFunction<any>;
+        let rejectResult: any;
+
+        beforeEach(async () => {
+            spyError = jest.fn();
+            client.once("error", spyError);
+            try {
+                await client.message(MockMessageType.MOCK_MESSAGE).send({ test: "test" }).waitForHost();
+            } catch (err) {
+                rejectResult = err;
+            }
+        });
+
+        it("rejects", () => expect(rejectResult).toEqual(expect.any(Error)));
+
+        it("called the error handler", () =>
+            expect(spyError).toHaveBeenCalledWith(expect.any(Error), ErrorReason.OTHER));
+    });
+
     describe("after opening", () => {
         beforeEach(async () => {
+            resetHistory();
             const hostOpenResult = await host.open();
             hostPeerId = hostOpenResult.peerId;
             const clientOpenResult = await client.open(hostPeerId);
@@ -58,6 +197,31 @@ describe("Simple", () => {
 
         it("has the same host connection ids for both peers", () =>
             expect(host.hostConnectionId).toBe(client.hostConnectionId));
+
+        describe("after closing the connection to the client", () => {
+            beforeEach(async () => {
+                host.closeConnectionToClient(client.userId);
+                await new Promise((resolve) => setTimeout(resolve));
+            });
+
+            it("removed the client from the set of users", () => expect(host.users).toEqual([host.user]));
+        });
+
+        it("can't close connection to itself", () =>
+            expect(() => host.closeConnectionToClient(host.userId)).toThrowError());
+
+        describe("after closing the connection to an unknown client", () => {
+            let spyError: jest.MockedFunction<any>;
+
+            beforeEach(async () => {
+                spyError = jest.fn();
+                host.once("error", spyError);
+                host.closeConnectionToClient("unknown-id");
+            });
+
+            it("calls the error handler", () =>
+                expect(spyError).toHaveBeenCalledWith(expect.any(Error), ErrorReason.INTERNAL));
+        });
 
         describe("after updating the user", () => {
             let spyUserUpdate: jest.MockedFunction<any>;
@@ -309,6 +473,7 @@ describe("Simple", () => {
                 let sendResult: SentMessageHandle<MockMessageType, MockPayload>;
 
                 beforeEach(async () => {
+                    resetHistory();
                     sendResult = clientMessage.send({ test: "something" });
                     await sendResult.waitForAll();
                 });

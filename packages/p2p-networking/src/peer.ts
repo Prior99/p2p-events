@@ -644,18 +644,19 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      */
     protected async createLocalPeer(): Promise<PeerOpenResult> {
         this.networkMode = NetworkMode.CONNECTING;
-        await new Promise((resolve) => {
-            this.peer = new PeerJS(null as any, this.options.peerJsOptions); // eslint-disable-line
-            this.peer.on("open", () => resolve());
-        });
-        if (!this.peer) {
+        try {
+            await new Promise((resolve, reject) => {
+                this.peer = new PeerJS(null as any, this.options.peerJsOptions); // eslint-disable-line
+                this.peer.on("open", () => resolve());
+                this.peer.on("error", (error) => reject(error));
+            });
+        } catch (err) {
             const error = new NetworkError("Connection id could not be determined.");
             this.throwError(error);
             throw error;
         }
-        this.networkMode = NetworkMode.CLIENT;
         return {
-            peerId: this.peer.id,
+            peerId: this.peer!.id,
             userId: this.userId,
         };
     }

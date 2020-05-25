@@ -19,18 +19,21 @@ export class IncompatibilityError extends Error {
     }
 
     public get incompatibleVersions(): IncompatibleVersion[] {
+        /* istanbul ignore if */
         if (
             this.hostVersions.application !== this.localVersions.application &&
             this.hostVersions.p2pNetwork !== this.localVersions.p2pNetwork
         ) {
             return [IncompatibleVersion.APPLICATION_PROTOCOL_VERSION, IncompatibleVersion.P2P_NETWORK_VERSION];
         }
-        if (this.hostVersions.application !== this.localVersions.application) {
-            return [IncompatibleVersion.APPLICATION_PROTOCOL_VERSION];
-        }
+        /* istanbul ignore if */
         if (this.hostVersions.p2pNetwork !== this.localVersions.p2pNetwork) {
             return [IncompatibleVersion.P2P_NETWORK_VERSION];
         }
+        if (this.hostVersions.application !== this.localVersions.application) {
+            return [IncompatibleVersion.APPLICATION_PROTOCOL_VERSION];
+        }
+        /* istanbul ignore next */
         return [];
     }
 }
