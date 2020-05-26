@@ -17,11 +17,9 @@ build:
     - yarn docs
   artifacts:
     paths:
-      - packages/
-      - LICENSE
-      - package.json
-      - README.md
-      - yarn.lock
+      - packages/p2p-networking/docs
+      - packages/example/dist
+      - packages/example/index.html
 
 test:
   before_script:
