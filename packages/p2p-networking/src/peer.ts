@@ -417,6 +417,15 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
     }
 
     /**
+     * Get one user by its id.
+     * @param id The id of the user to get.
+     * @return The user or `undefined` if none.
+     */
+    public getUser(id: string): TUser | undefined {
+        return this.userManager.getUser(id);
+    }
+
+    /**
      * Register a new message on this peer.
      * Will return a factory on which the application can subscribe for message received with this type
      * or to send these messages.

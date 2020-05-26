@@ -88,6 +88,7 @@ export abstract class ObservablePeer<TUser extends User, TMessageType extends st
         return Array.from(this.userMap.values()).sort((a, b) => a.id.localeCompare(b.id));
     }
 
+    public getUser: Peer<TUser, TMessageType>["getUser"] = (...args) => this.peer.getUser(...args);
     public on: Peer<TUser, TMessageType>["on"] = (...args) => this.peer.on(...args);
     public addEventListener: Peer<TUser, TMessageType>["addEventListener"] = (...args) =>
         this.peer.addEventListener(...args);

@@ -6,7 +6,7 @@ import { ObservablePeer } from "p2p-networking-mobx";
 import { User } from "p2p-networking";
 
 export interface IdMessageProps<TUser extends User, TMessageType extends string | number> extends MessageProps {
-    peer: ObservablePeer<TUser, TMessageType>;
+    peer?: ObservablePeer<TUser, TMessageType>;
     translations?: {
         loadingHeader?: string;
         loadingDescription?: string;
@@ -34,7 +34,7 @@ export class IdMessage<TUser extends User, TMessageType extends string | number>
     }
 
     @computed private get url(): string {
-        return this.props.urlFactory(this.props.peer.hostConnectionId ?? "");
+        return this.props.urlFactory(this.props.peer?.hostConnectionId ?? "");
     }
 
     @computed private get popupText(): string {
@@ -73,7 +73,7 @@ export class IdMessage<TUser extends User, TMessageType extends string | number>
 
     public render(): JSX.Element {
         const { translations: _translations, urlFactory: _urlFactory, peer, popupProps, ...rest } = this.props;
-        if (peer.isDisconnected) {
+        if (!peer || peer.isDisconnected) {
             return (
                 <Message negative {...rest} icon>
                     <Icon name="warning circle" />
@@ -106,7 +106,7 @@ export class IdMessage<TUser extends User, TMessageType extends string | number>
                         positive
                         icon="globe"
                         onClick={this.handleIdClick}
-                        content={this.props.peer.hostConnectionId}
+                        content={peer.hostConnectionId}
                     />
                 }
                 content={this.popupText}
