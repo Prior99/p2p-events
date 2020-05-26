@@ -15,7 +15,7 @@
     "scripts": {
         "build": "tsc -p .",
         "prepublish": "yarn build",
-        "lint": "eslint --max-warnings 0 src/**/*.ts test/**/*.ts"
+        "lint": "eslint --max-warnings 0 src/**/*.ts"
     },
     "eslintConfig": {
         "extends": "../../eslint-defaults.json"
