@@ -1,12 +1,12 @@
 import * as React from "react";
 import { observer } from "mobx-react";
-import { Table, Icon, TableRowProps } from "semantic-ui-react";
+import { Table, Icon, TableRowProps, TableProps } from "semantic-ui-react";
 import { computed } from "mobx";
 import { ObservablePeer } from "p2p-networking-mobx";
 import { User } from "p2p-networking";
 import { UserTableRow } from "./user-table-row";
 
-export interface UserTableProps<TUser extends User, TMessageType extends string | number> {
+export interface UserTableProps<TUser extends User, TMessageType extends string | number> extends TableProps {
     peer: ObservablePeer<TUser, TMessageType>;
     translations?: {
         name?: string;
