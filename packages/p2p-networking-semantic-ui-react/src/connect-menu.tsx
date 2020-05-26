@@ -53,6 +53,7 @@ export class ConnectMenu extends React.Component<ConnectMenuProps> {
         return (
             <Form {...rest} onSubmit={this.handleSubmit}>
                 <Tab panes={this.panes} activeIndex={this.activeTab} onTabChange={this.handleTabChange} />
+                <p />
                 {this.activeTab === 0 && (
                     <>
                         <Form.Field>

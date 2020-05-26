@@ -18,7 +18,7 @@ export class UserTableRow<TUser extends User> extends React.Component<UserTableR
     }
 
     @computed private get roundTripTime(): string {
-        return `${this.props.roundTripTime}ms`;
+        return `${this.props.roundTripTime * 1000}ms`;
     }
 
     public render(): JSX.Element {

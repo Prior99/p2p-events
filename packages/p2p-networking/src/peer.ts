@@ -169,6 +169,7 @@ export type PeerEventArgumentMapping<TMessageType extends string | number, TUser
     userupdate: [TUser];
     error: [Error, ErrorReason];
     networkchange: [NetworkMode];
+    open: [];
 };
 
 /**
@@ -251,6 +252,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         userupdate: new Set(),
         error: new Set(),
         networkchange: new Set(),
+        open: new Set(),
     };
     /**
      * Listeners for the result of updating the user. `.updateUser()` returns a promise that should resolve

@@ -393,6 +393,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         this.startPing();
         this.networkMode = NetworkMode.HOST;
         this.emitEvent("networkchange", this.networkMode);
+        this.emitEvent("open");
         return openResult;
     }
 }

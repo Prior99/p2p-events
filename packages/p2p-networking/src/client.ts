@@ -81,6 +81,7 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
         });
 
         this.hostConnectionId = remotePeerId;
+        this.emitEvent("open");
 
         return { ...peerOpenResult, remotePeerId };
     }
