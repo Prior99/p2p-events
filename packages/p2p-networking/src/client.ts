@@ -50,6 +50,7 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
     public async open(remotePeerId: string): Promise<ClientOpenResult> {
         const peerOpenResult = await super.createLocalPeer();
         this.networkMode = NetworkMode.CLIENT;
+        this.emitEvent("networkchange", this.networkMode);
         await new Promise((resolve, reject) => {
             this.connection = this.peer!.connect(remotePeerId, { reliable: true });
             const errorListener = (error: unknown): void => {

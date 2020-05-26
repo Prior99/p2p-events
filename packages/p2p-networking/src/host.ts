@@ -388,11 +388,11 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
      * @returns Promise that resolves once the host is ready to accept connections.
      */
     public async open(): Promise<PeerOpenResult> {
-        this.networkMode = NetworkMode.CONNECTING;
         const openResult = await super.createLocalPeer();
         this.peer!.on("connection", (connection) => this.handleConnect(connection));
         this.startPing();
         this.networkMode = NetworkMode.HOST;
+        this.emitEvent("networkchange", this.networkMode);
         return openResult;
     }
 }

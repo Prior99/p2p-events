@@ -168,6 +168,7 @@ export type PeerEventArgumentMapping<TMessageType extends string | number, TUser
     connect: [];
     userupdate: [TUser];
     error: [Error, ErrorReason];
+    networkchange: [NetworkMode];
 };
 
 /**
@@ -249,6 +250,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         connect: new Set(),
         userupdate: new Set(),
         error: new Set(),
+        networkchange: new Set(),
     };
     /**
      * Listeners for the result of updating the user. `.updateUser()` returns a promise that should resolve
@@ -637,6 +639,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         });
         this.peer.destroy();
         this.networkMode = NetworkMode.DISCONNECTED;
+        this.emitEvent("networkchange", this.networkMode);
     }
 
     /**
@@ -645,6 +648,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      */
     protected async createLocalPeer(): Promise<PeerOpenResult> {
         this.networkMode = NetworkMode.CONNECTING;
+        this.emitEvent("networkchange", this.networkMode);
         try {
             await new Promise((resolve, reject) => {
                 this.peer = new PeerJS(null as any, this.options.peerJsOptions); // eslint-disable-line

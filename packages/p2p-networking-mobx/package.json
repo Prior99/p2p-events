@@ -1,0 +1,56 @@
+{
+    "name": "p2p-networking-mobx",
+    "version": "0.1.1",
+    "main": "dist/src/index.js",
+    "license": "MIT",
+    "author": "Frederick Gnodtke",
+    "repository": "https://github.com/Prior99/p2p-networking",
+    "description": "Mobx wrapper for p2p-networking.",
+    "keywords": [
+        "webrtc",
+        "p2p",
+        "networking",
+        "mobx"
+    ],
+    "scripts": {
+        "build": "tsc -p .",
+        "test": "jest",
+        "prepublish": "yarn build",
+        "lint": "eslint --max-warnings 0 src/**/*.ts test/**/*.ts"
+    },
+    "eslintConfig": {
+        "extends": "../../eslint-defaults.json"
+    },
+    "typings": "dist/src/index.d.ts",
+    "files": [
+        "dist",
+        "src",
+        "package.json",
+        "README.md",
+        "LICENSE"
+    ],
+    "jest": {
+        "preset": "../../jest-defaults.json"
+    },
+    "devDependencies": {
+        "@types/jest": "^25.2.3",
+        "@types/peerjs": "^1.1.0",
+        "@types/uuid": "^8.0.0",
+        "@typescript-eslint/eslint-plugin": "^3.0.0",
+        "@typescript-eslint/parser": "^3.0.0",
+        "eslint": "^6.0.0",
+        "eslint-config-prettier": "^6.11.0",
+        "eslint-plugin-prettier": "^3.1.3",
+        "jest": "^26.0.1",
+        "mobx": "^5.15.4",
+        "p2p-networking": "^0.1.1",
+        "prettier": "^2.0.5",
+        "ts-jest": "^26.0.0",
+        "typedoc": "^0.17.7",
+        "typescript": "^3.9.3"
+    },
+    "peerDependencies": {
+        "p2p-networking": "^0.1.1",
+        "mobx": "^5.15.4"
+    }
+}
