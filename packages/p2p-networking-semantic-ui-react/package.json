@@ -55,5 +55,6 @@
         "react-router": "^5.2.0",
         "semantic-ui-react": "^0.88.2",
         "typescript": "^3.9.2"
-    }
+    },
+    "gitHead": "d6752d23f7493e7af3312426d76200ca6c386370"
 }

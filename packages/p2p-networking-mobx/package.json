@@ -44,5 +44,6 @@
     "peerDependencies": {
         "mobx": "^5.15.4",
         "p2p-networking": "^0.1.1"
-    }
+    },
+    "gitHead": "d6752d23f7493e7af3312426d76200ca6c386370"
 }
