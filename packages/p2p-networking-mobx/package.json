@@ -1,7 +1,7 @@
 {
     "name": "p2p-networking-mobx",
     "version": "0.1.1",
-    "main": "dist/src/index.js",
+    "main": "dist/index.js",
     "license": "MIT",
     "author": "Frederick Gnodtke",
     "repository": "https://github.com/Prior99/p2p-networking",
@@ -20,7 +20,7 @@
     "eslintConfig": {
         "extends": "../../eslint-defaults.json"
     },
-    "typings": "dist/src/index.d.ts",
+    "typings": "dist/index.d.ts",
     "files": [
         "dist",
         "src",

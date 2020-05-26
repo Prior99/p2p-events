@@ -11,7 +11,9 @@
         "declaration": true,
         "baseUrl": "packages",
         "paths": {
-            "p2p-networking": ["p2p-networking/src"]
+            "p2p-networking": ["p2p-networking/src"],
+            "p2p-networking-mobx": ["p2p-networking-mobx/src"],
+            "p2p-networking-semantic-ui-react": ["p2p-networking-semantic-ui-react/src"]
         }
     },
     "compileOnSave": true

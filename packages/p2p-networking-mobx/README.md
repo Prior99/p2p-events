@@ -6,7 +6,7 @@ MobX wrapper for p2p-networking. All three main classes `Host`, `Client` and `Pe
 
 Have a look at the documentation for `p2p-networking`.
 
-- [Example code](../packages/example/src)
+- [Example code](../example/src)
 - [Api Reference](https://prior99.gitlab.io/p2p-networking/index.html)
 - [Example](https://prior99.gitlab.io/p2p-networking/example/index.html)
 
