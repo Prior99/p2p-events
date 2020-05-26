@@ -33,7 +33,7 @@ export abstract class ObservablePeer<TUser extends User, TMessageType extends st
             action((networkMode) => (this.networkMode = networkMode)),
         );
         this.peer.on(
-            "connect",
+            "open",
             action(() => {
                 for (const user of this.peer.users) {
                     this.userMap.set(user.id, user);
@@ -41,10 +41,6 @@ export abstract class ObservablePeer<TUser extends User, TMessageType extends st
                 this.pingInfos = peer.pingInfos;
                 this.hostConnectionId = peer.hostConnectionId;
             }),
-        );
-        this.peer.on(
-            "connect",
-            action(() => (this.hostConnectionId = peer.hostConnectionId)),
         );
         this.peer.on(
             "pinginfo",
