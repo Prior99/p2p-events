@@ -138,7 +138,7 @@ describe("Simple", () => {
 
     beforeEach(() => {
         resetHistory();
-        const options = { timeout: 0.01, applicationProtocolVersion: "1.0.0" };
+        const options = { timeout: 0.02, applicationProtocolVersion: "1.0.0" };
         host = new Host({ ...options, user: { name: "Mr. Host" } });
         client = new Client({ ...options, user: { name: "Mr. Client" } });
     });
