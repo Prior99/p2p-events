@@ -18,3 +18,12 @@ export class ObservableClient<TUser extends User, TMessageType extends string | 
         return this.client.open(remotePeerId);
     }
 }
+
+export async function createObservableClient<TUser extends User, TMessageType extends string | number>(
+    options: PeerOptions<TUser>,
+    remotePeerId: string,
+): Promise<ObservableClient<TUser, TMessageType>> {
+    const client = new ObservableClient<TUser, TMessageType>(options);
+    await client.open(remotePeerId);
+    return client;
+}

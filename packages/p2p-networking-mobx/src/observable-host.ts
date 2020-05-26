@@ -23,3 +23,11 @@ export class ObservableHost<TUser extends User, TMessageType extends string | nu
         return this.host.open();
     }
 }
+
+export async function createObservableHost<TUser extends User, TMessageType extends string | number>(
+    options: HostOptions<TUser>,
+): Promise<ObservableHost<TUser, TMessageType>> {
+    const host = new ObservableHost<TUser, TMessageType>(options);
+    await host.open();
+    return host;
+}
