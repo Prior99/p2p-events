@@ -2,7 +2,6 @@ import * as React from "react";
 import { observer } from "mobx-react";
 import { Table, TableRowProps } from "semantic-ui-react";
 import { computed } from "mobx";
-import "./scoreboard-row.scss";
 import { User } from "p2p-networking";
 
 export interface UserTableRowProps<TUser extends User> extends TableRowProps {
