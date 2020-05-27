@@ -137,6 +137,10 @@ export interface PeerOptions<TUser extends User> {
      * Optional options that will be handed to PeerJS when initialized.
      */
     peerJsOptions?: PeerJS.PeerJSOption;
+    /**
+     * Optional number of seconds for delaying the welcome messages.
+     */
+    welcomeDelay?: number;
 }
 
 /**
@@ -158,6 +162,7 @@ export interface PeerOpenResult {
  */
 export const peerDefaultOptions = {
     timeout: 5,
+    welcomeDelay: 0.1,
 };
 
 export type PeerEventArgumentMapping<TMessageType extends string | number, TUser extends User> = {
@@ -170,6 +175,7 @@ export type PeerEventArgumentMapping<TMessageType extends string | number, TUser
     error: [Error, ErrorReason];
     networkchange: [NetworkMode];
     open: [];
+    userreconnect: [TUser];
 };
 
 /**
@@ -253,6 +259,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         error: new Set(),
         networkchange: new Set(),
         open: new Set(),
+        userreconnect: new Set(),
     };
     /**
      * Listeners for the result of updating the user. `.updateUser()` returns a promise that should resolve
@@ -349,6 +356,8 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      *  * `"connect"`: When this peer has successfully connected to the host.
      *  * `"userupdate"`: When any user on the network changed their information.
      *  * `"error"`: When any error was encountered.
+     *  * `"open"`: When the connection is open and ready to use.
+     *  * `"userreconnect"`: When a user reconnected.
      * @param handler The handler that shall be called if the specified event occurs. The arguments
      *    vary depending on the event's type.
      */
@@ -518,6 +527,11 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
     protected handleHostPacket<TPayload>(packet: HostPacket<TMessageType, TUser, TPayload>): void {
         debug("Received packet from host of type %s: %O", packet.packetType, packet);
         switch (packet.packetType) {
+            case HostPacketType.WELCOME_BACK:
+                this.userId = packet.userId;
+                this.userManager.initialize(packet.users);
+                this.emitEvent("connect");
+                break;
             case HostPacketType.WELCOME:
                 this.userManager.initialize(packet.users);
                 this.emitEvent("connect");
@@ -527,9 +541,20 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 this.emitEvent("userconnect", packet.user);
                 break;
             case HostPacketType.USER_DISCONNECTED:
-                this.userManager.removeUser(packet.userId);
+                this.userManager.disconnectUser(packet.userId);
                 this.emitEvent("userdisconnect", packet.userId);
                 break;
+            case HostPacketType.USER_RECONNECTED: {
+                const user = this.userManager.getUser(packet.userId);
+                /* istanbul ignore if */
+                if (!user) {
+                    this.throwError(new InternalError(`No user with id "${packet.userId}".`));
+                    return;
+                }
+                this.userManager.reconnectUser(packet.userId);
+                this.emitEvent("userreconnect", user);
+                break;
+            }
             case HostPacketType.PING:
                 this.sendClientPacketToHost({
                     packetType: ClientPacketType.PONG,

@@ -9,11 +9,28 @@ export class Users<TUser extends User> {
             user,
             lastPingDate: Date.now(),
             roundTripTime: undefined,
+            disconnected: false,
         });
     }
 
     public removeUser(userId: string): void {
         this.users.delete(userId);
+    }
+
+    public reconnectUser(userId: string): void {
+        const user = this.users.get(userId);
+        if (!user) {
+            throw new InternalError(`No user with id "${userId}".`);
+        }
+        user.disconnected = false;
+    }
+
+    public disconnectUser(userId: string): void {
+        const user = this.users.get(userId);
+        if (!user) {
+            throw new InternalError(`No user with id "${userId}".`);
+        }
+        user.disconnected = true;
     }
 
     public getUser(userId: string): TUser | undefined {
@@ -59,10 +76,12 @@ export class Users<TUser extends User> {
     }
 
     public get all(): UserInfo<TUser>[] {
-        return Array.from(this.users.values()).sort((a, b) => a.user.id.localeCompare(b.user.id));
+        return Array.from(this.users.values())
+            .filter((user) => !user.disconnected)
+            .sort((a, b) => a.user.id.localeCompare(b.user.id));
     }
 
     public get count(): number {
-        return this.users.size;
+        return this.all.length;
     }
 }

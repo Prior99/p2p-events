@@ -9,6 +9,7 @@ import {
     Message,
     NetworkMode,
     ErrorReason,
+    Versions,
 } from "./types";
 import { Peer, PeerOpenResult, PeerOptions, peerDefaultOptions } from "./peer";
 import { unreachable } from "./utils";
@@ -219,6 +220,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         switch (packet.packetType) {
             /* istanbul ignore next */
             case ClientPacketType.HELLO:
+            case ClientPacketType.HELLO_AGAIN:
                 this.throwError(
                     new InternalError("Received unexpected hello message from client. Connection already initialized."),
                 );
@@ -261,7 +263,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                     message,
                 };
                 if (targets) {
-                    targets.forEach((target) => {
+                    targets.forEach((target: string) => {
                         this.sendHostPacketToUser(target, packetToSend);
                     });
                 } else {
@@ -329,38 +331,69 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         this.handleClientPacket(this.userId, packet);
     }
 
+    private checkVersions(versions: Versions, dataConnection: PeerJS.DataConnection): boolean {
+        if (
+            versions.application !== this.options.applicationProtocolVersion ||
+            versions.p2pNetwork !== libraryVersion
+        ) {
+            this.sendHostPacketToPeer(dataConnection, {
+                packetType: HostPacketType.INCOMPATIBLE,
+                versions: {
+                    application: this.options.applicationProtocolVersion,
+                    p2pNetwork: libraryVersion,
+                },
+            });
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Called when a new connection is made (new client connected).
      * @param dataConnection The new connection.
      */
     protected handleConnect(dataConnection: PeerJS.DataConnection): void {
         let userId: string;
-        dataConnection.on("data", (json) => {
+        dataConnection.on("data", async (json) => {
             const message: ClientPacket<TMessageType, TUser, unknown> = json;
             switch (message.packetType) {
                 case ClientPacketType.HELLO:
                     userId = message.user.id;
-                    if (
-                        message.versions.application !== this.options.applicationProtocolVersion ||
-                        message.versions.p2pNetwork !== libraryVersion
-                    ) {
-                        this.sendHostPacketToPeer(dataConnection, {
-                            packetType: HostPacketType.INCOMPATIBLE,
-                            versions: {
-                                application: this.options.applicationProtocolVersion,
-                                p2pNetwork: libraryVersion,
-                            },
-                        });
+                    if (!this.checkVersions(message.versions, dataConnection)) {
                         break;
                     }
                     this.connections.set(userId, { dataConnection, userId });
+                    // In order to avoid collision in Safari and Chrome on Windows, wait until greeting.
+                    await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
                     this.sendHostPacketToPeer(dataConnection, {
                         packetType: HostPacketType.WELCOME,
                         users: this.userManager.all,
                     });
+                    // In order to avoid collision in Safari and Chrome on Windows, wait until announcing.
+                    await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
                     this.sendHostPacketToAll({
                         packetType: HostPacketType.USER_CONNECTED,
                         user: message.user,
+                    });
+                    break;
+                case ClientPacketType.HELLO_AGAIN:
+                    userId = message.userId;
+                    if (!this.checkVersions(message.versions, dataConnection)) {
+                        break;
+                    }
+                    this.connections.set(userId, { dataConnection, userId });
+                    // In order to avoid collision in Safari and Chrome on Windows, wait until greeting.
+                    await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
+                    this.sendHostPacketToPeer(dataConnection, {
+                        packetType: HostPacketType.WELCOME_BACK,
+                        users: this.userManager.all,
+                        userId,
+                    });
+                    // In order to avoid collision in Safari and Chrome on Windows, wait until announcing.
+                    await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
+                    this.sendHostPacketToAll({
+                        packetType: HostPacketType.USER_RECONNECTED,
+                        userId,
                     });
                     break;
                 default:

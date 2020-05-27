@@ -19,4 +19,5 @@ export interface PingInfo {
 
 export interface UserInfo<TUser extends User> extends PingInfo {
     user: TUser;
+    disconnected: boolean;
 }

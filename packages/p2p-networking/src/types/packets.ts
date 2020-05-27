@@ -17,8 +17,10 @@ export interface Versions {
 
 export const enum HostPacketType {
     WELCOME = "welcome",
+    WELCOME_BACK = "welcome back",
     USER_CONNECTED = "user connected",
     USER_DISCONNECTED = "user disconnected",
+    USER_RECONNECTED = "user reconnected",
     PING = "ping",
     RELAYED_MESSAGE = "relayed message",
     ACKNOWLEDGED_BY_HOST = "acknowledged by host",
@@ -30,11 +32,18 @@ export const enum HostPacketType {
 
 export const enum ClientPacketType {
     HELLO = "hello",
+    HELLO_AGAIN = "hello again",
     DISCONNECT = "disconnect",
     PONG = "pong",
     MESSAGE = "message",
     ACKNOWLEDGE = "acknowledge",
     UPDATE_USER = "update user",
+}
+
+export interface HostPacketWelcomeBack<TUser extends User> {
+    packetType: HostPacketType.WELCOME_BACK;
+    users: UserInfo<TUser>[];
+    userId: string;
 }
 
 export interface HostPacketWelcome<TUser extends User> {
@@ -50,6 +59,11 @@ export interface HostPacketIncompatible {
 export interface HostPacketUserConnected<TUser extends User> {
     packetType: HostPacketType.USER_CONNECTED;
     user: TUser;
+}
+
+export interface HostPacketUserReconnected {
+    packetType: HostPacketType.USER_RECONNECTED;
+    userId: string;
 }
 
 export interface HostPacketUserDisconnected {
@@ -89,8 +103,10 @@ export interface HostPacketUpdateUser<TUser extends User> {
 
 export type HostPacket<TMessageType extends string | number, TUser extends User, TPayload> =
     | HostPacketWelcome<TUser>
+    | HostPacketWelcomeBack<TUser>
     | HostPacketUserConnected<TUser>
     | HostPacketUserDisconnected
+    | HostPacketUserReconnected
     | HostPacketPing
     | HostPacketRelayedMessage<TMessageType, TPayload>
     | HostPacketAcknowledgedByHost
@@ -102,6 +118,12 @@ export type HostPacket<TMessageType extends string | number, TUser extends User,
 export interface ClientPacketHello<TUser extends User> {
     packetType: ClientPacketType.HELLO;
     user: TUser;
+    versions: Versions;
+}
+
+export interface ClientPacketHelloAgain {
+    packetType: ClientPacketType.HELLO_AGAIN;
+    userId: string;
     versions: Versions;
 }
 
@@ -132,6 +154,7 @@ export interface ClientPacketUpdateUser<TUser extends User> {
 
 export type ClientPacket<TMessageType extends string | number, TUser extends User, TPayload> =
     | ClientPacketHello<TUser>
+    | ClientPacketHelloAgain
     | ClientPacketDisconnect
     | ClientPacketPong
     | ClientPacketMessage<TMessageType, TPayload>

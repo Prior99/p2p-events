@@ -44,10 +44,11 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
      * Connect to a network.
      *
      * @param remotePeerId The id of the peer to connect to.
+     * @param userId If reconnecting to a previously disconnected session, provide this user id.
      *
      * @returns A promise resolving once the client is fully connected.
      */
-    public async open(remotePeerId: string): Promise<ClientOpenResult> {
+    public async open(remotePeerId: string, userId?: string): Promise<ClientOpenResult> {
         const peerOpenResult = await super.createLocalPeer();
         this.networkMode = NetworkMode.CLIENT;
         this.emitEvent("networkchange", this.networkMode);
@@ -58,16 +59,29 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
                 reject(error);
             };
             this.connection.on("error", errorListener);
-            this.connection.on("open", () => {
+            this.connection.on("open", async () => {
                 this.connection!.on("data", (data) => this.handleHostPacket(data));
-                this.sendClientPacketToHost({
-                    packetType: ClientPacketType.HELLO,
-                    versions: {
-                        application: this.options.applicationProtocolVersion,
-                        p2pNetwork: libraryVersion,
-                    },
-                    user: this.user,
-                });
+                // In order to avoid collision in Safari and Chrome on Windows, wait until greeting.
+                await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
+                if (userId) {
+                    this.sendClientPacketToHost({
+                        packetType: ClientPacketType.HELLO_AGAIN,
+                        versions: {
+                            application: this.options.applicationProtocolVersion,
+                            p2pNetwork: libraryVersion,
+                        },
+                        userId,
+                    });
+                } else {
+                    this.sendClientPacketToHost({
+                        packetType: ClientPacketType.HELLO,
+                        versions: {
+                            application: this.options.applicationProtocolVersion,
+                            p2pNetwork: libraryVersion,
+                        },
+                        user: this.user,
+                    });
+                }
                 const peerErrorListener = (error: Error): void => {
                     this.removeEventListener("error", peerErrorListener);
                     reject(error);
