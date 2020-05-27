@@ -1,6 +1,6 @@
 jest.mock("peerjs");
 import { ClientPacketType, HostPacketType, ErrorReason } from "../src";
-import { resetHistory, getHistory } from "./packet-history";
+import { getHistory } from "./packet-history";
 import { mockHistoryPacket, mockVersion, mockUserInfo, ScenarioSimple, scenarioSimple } from "./utils";
 
 describe("Open connection", () => {
@@ -58,48 +58,6 @@ describe("Open connection", () => {
 
         it("calls the error handler", () =>
             expect(spyError).toHaveBeenCalledWith(expect.any(Error), ErrorReason.INTERNAL));
-    });
-
-    describe("after disconnecting", () => {
-        let spyUserDisconnect: jest.MockedFunction<any>;
-
-        beforeEach((done) => {
-            spyUserDisconnect = jest.fn(() => done());
-            scenario.host.on("userdisconnect", spyUserDisconnect);
-            resetHistory();
-            scenario.client.close();
-        });
-
-        it("fires the event", () => expect(spyUserDisconnect).toHaveBeenCalledWith(scenario.client.userId));
-
-        it("has sent the expected Packets", () => {
-            expect(getHistory()).toEqual([
-                {
-                    from: scenario.clientPeerId,
-                    to: scenario.hostPeerId,
-                    data: {
-                        packetType: ClientPacketType.DISCONNECT,
-                    },
-                },
-                {
-                    from: scenario.hostPeerId,
-                    to: scenario.clientPeerId,
-                    data: {
-                        packetType: HostPacketType.USER_DISCONNECTED,
-                        userId: scenario.client.userId,
-                    },
-                },
-            ]);
-        });
-
-        it("removed the user from host's users", () => {
-            expect(scenario.host.users).toEqual([
-                {
-                    id: scenario.host.userId,
-                    name: "Mr. Host",
-                },
-            ]);
-        });
     });
 
     it("has sent the expected Packets", () => {
