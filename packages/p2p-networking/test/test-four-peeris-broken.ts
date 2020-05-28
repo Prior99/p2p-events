@@ -1,7 +1,6 @@
 import { ScenarioFourPeers, mockUserList, scenarioFourPeers } from "./utils";
 
 describe("Broken client with four peers", () => {
-    let pingResult: any;
     let spyDisconnect: jest.MockedFunction<any>;
     let scenario: ScenarioFourPeers;
 
@@ -10,17 +9,11 @@ describe("Broken client with four peers", () => {
         spyDisconnect = jest.fn();
         scenario.clients[0].on("userdisconnect", spyDisconnect);
         (scenario.clients[1] as any).handleHostPacket = () => undefined;
-        try {
-            await scenario.host.ping();
-        } catch (err) {
-            pingResult = err;
-        }
+        await scenario.host.ping();
         await new Promise((resolve) => setTimeout(resolve));
     });
 
     it("fired 'userdisconnect'", () => expect(spyDisconnect).toHaveBeenCalledWith(scenario.clients[1].userId));
-
-    it("rejects the ping", () => expect(pingResult).toEqual(expect.any(Error)));
 
     it("all peers removed the user", () => {
         [scenario.host, scenario.clients[0], scenario.clients[2]].forEach((peer) =>

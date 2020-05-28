@@ -58,6 +58,11 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
                 this.connection!.off("error", errorListener);
                 reject(error);
             };
+            this.connection.on("close", () => {
+                this.networkMode = NetworkMode.DISCONNECTED;
+                this.emitEvent("networkchange", this.networkMode);
+                this.emitEvent("close");
+            });
             this.connection.on("error", errorListener);
             this.connection.on("open", async () => {
                 this.connection!.on("data", (data) => this.handleHostPacket(data));

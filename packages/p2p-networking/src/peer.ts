@@ -171,6 +171,7 @@ export type PeerEventArgumentMapping<TMessageType extends string | number, TUser
     error: [Error, ErrorReason];
     networkchange: [NetworkMode];
     open: [];
+    close: [];
     userreconnect: [TUser];
     userkick: [string];
 };
@@ -256,6 +257,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         error: new Set(),
         networkchange: new Set(),
         open: new Set(),
+        close: new Set(),
         userreconnect: new Set(),
         userkick: new Set(),
     };
@@ -689,6 +691,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         this.peer.destroy();
         this.networkMode = NetworkMode.DISCONNECTED;
         this.emitEvent("networkchange", this.networkMode);
+        this.emitEvent("close");
     }
 
     /**

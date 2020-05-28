@@ -160,7 +160,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
             packetType: HostPacketType.PING,
             initiationDate: Date.now(),
         });
-        await promise;
+        await promise.catch(() => undefined);
         this.sendHostPacketToAll({
             packetType: HostPacketType.PING_INFO,
             pingInfos: this.userManager.connected.map(({ lastPingDate, roundTripTime, user }) => ({
@@ -354,6 +354,12 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
      */
     protected handleConnect(dataConnection: PeerJS.DataConnection): void {
         let userId: string;
+        dataConnection.on("close", () => {
+            if (!userId) {
+                return;
+            }
+            this.closeConnectionToClient(userId);
+        });
         dataConnection.on("data", async (json) => {
             const message: ClientPacket<TMessageType, TUser, unknown> = json;
             if (message.packetType !== ClientPacketType.HELLO && message.packetType !== ClientPacketType.HELLO_AGAIN) {

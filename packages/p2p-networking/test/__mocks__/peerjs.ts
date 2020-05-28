@@ -62,6 +62,9 @@ export default class MockPeerJS {
             connections.get(remoteId)!.push(this.id);
             instances.get(remoteId)!.invokeListener("connection", {
                 on: jest.fn((eventName: string, handler: (...args: any[]) => any) => {
+                    if (eventName === "close") {
+                        return;
+                    }
                     if (eventName === "error") {
                         return;
                     }
@@ -78,6 +81,9 @@ export default class MockPeerJS {
         }
         return {
             on: jest.fn((eventName: string, handler: (...args: any[]) => any) => {
+                if (eventName === "close") {
+                    return;
+                }
                 if (eventName === "error") {
                     if (remoteId === "broken-id") {
                         setTimeout(() => handler(new Error("Some error.")));
