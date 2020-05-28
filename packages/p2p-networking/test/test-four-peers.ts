@@ -23,13 +23,13 @@ describe("Four peers", () => {
         expect(getHistory()).toEqual([
             mockHistoryPacket(scenario.clientPeerIds[0], scenario.hostPeerId, ClientPacketType.HELLO, {
                 versions: mockVersion(),
-                user: scenario.clients[0].user,
+                user: scenario.clients[0].user!,
             }),
             mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[0], HostPacketType.WELCOME, {
-                users: mockUserInfoList(mockUserInfo({ user: scenario.host.user })),
+                users: mockUserInfoList(mockUserInfo({ user: scenario.host.user! })),
             }),
             mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[0], HostPacketType.USER_CONNECTED, {
-                user: scenario.clients[0].user,
+                user: scenario.clients[0].user!,
             }),
             mockHistoryPacket(scenario.clientPeerIds[1], scenario.hostPeerId, ClientPacketType.HELLO, {
                 versions: mockVersion(),
@@ -37,35 +37,35 @@ describe("Four peers", () => {
             }),
             mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[1], HostPacketType.WELCOME, {
                 users: mockUserInfoList(
-                    mockUserInfo({ user: scenario.host.user }),
-                    mockUserInfo({ user: scenario.clients[0].user }),
+                    mockUserInfo({ user: scenario.host.user! }),
+                    mockUserInfo({ user: scenario.clients[0].user! }),
                 ),
             }),
             mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[0], HostPacketType.USER_CONNECTED, {
-                user: scenario.clients[1].user,
+                user: scenario.clients[1].user!,
             }),
             mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[1], HostPacketType.USER_CONNECTED, {
-                user: scenario.clients[1].user,
+                user: scenario.clients[1].user!,
             }),
             mockHistoryPacket(scenario.clientPeerIds[2], scenario.hostPeerId, ClientPacketType.HELLO, {
                 versions: mockVersion(),
-                user: scenario.clients[2].user,
+                user: scenario.clients[2].user!,
             }),
             mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[2], HostPacketType.WELCOME, {
                 users: mockUserInfoList(
-                    mockUserInfo({ user: scenario.host.user }),
-                    mockUserInfo({ user: scenario.clients[0].user }),
-                    mockUserInfo({ user: scenario.clients[1].user }),
+                    mockUserInfo({ user: scenario.host.user! }),
+                    mockUserInfo({ user: scenario.clients[0].user! }),
+                    mockUserInfo({ user: scenario.clients[1].user! }),
                 ),
             }),
             mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[0], HostPacketType.USER_CONNECTED, {
-                user: scenario.clients[2].user,
+                user: scenario.clients[2].user!,
             }),
             mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[1], HostPacketType.USER_CONNECTED, {
-                user: scenario.clients[2].user,
+                user: scenario.clients[2].user!,
             }),
             mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[2], HostPacketType.USER_CONNECTED, {
-                user: scenario.clients[2].user,
+                user: scenario.clients[2].user!,
             }),
         ]);
     });
@@ -144,7 +144,7 @@ describe("Four peers", () => {
         it("doesn't know the user", () =>
             [scenario.host, ...scenario.clients].forEach((peer) =>
                 expect(peer.users).toEqual(
-                    mockUserList(scenario.host.user, ...connectedClients.map((client) => client.user)),
+                    mockUserList(scenario.host.user!, ...connectedClients.map((client) => client.user!)),
                 ),
             ));
 

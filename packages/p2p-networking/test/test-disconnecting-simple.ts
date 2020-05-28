@@ -158,8 +158,8 @@ describe("Disconnecting", () => {
                     }),
                     mockHistoryPacket(scenario.hostPeerId, newPeerId, HostPacketType.WELCOME_BACK, {
                         users: mockUserInfoList(
-                            mockUserInfo({ user: scenario.host.user }),
-                            mockUserInfo({ user: scenario.client.user, disconnected: true }),
+                            mockUserInfo({ user: scenario.host.user! }),
+                            mockUserInfo({ user: scenario.client.user!, disconnected: true }),
                         ),
                         userId: scenario.client.userId,
                     }),
@@ -170,10 +170,10 @@ describe("Disconnecting", () => {
             });
 
             it("knows of both users on client side", () =>
-                expect(scenario.client.users).toEqual(mockUserList(scenario.host.user, scenario.client.user)));
+                expect(scenario.client.users).toEqual(mockUserList(scenario.host.user!, scenario.client.user!)));
 
             it("knows of both users on host side", () =>
-                expect(scenario.host.users).toEqual(mockUserList(scenario.host.user, scenario.client.user)));
+                expect(scenario.host.users).toEqual(mockUserList(scenario.host.user!, scenario.client.user!)));
 
             it("fires 'userreconnect' on host site", () =>
                 expect(spyReconnectHost).toHaveBeenCalledWith(scenario.client.user));
@@ -199,10 +199,10 @@ describe("Disconnecting", () => {
             });
 
             it("knows of both users on client side", () =>
-                expect(newClient.users).toEqual(mockUserList(scenario.host.user, scenario.client.user)));
+                expect(newClient.users).toEqual(mockUserList(scenario.host.user!, scenario.client.user!)));
 
             it("knows of both users on host side", () =>
-                expect(scenario.host.users).toEqual(mockUserList(scenario.host.user, scenario.client.user)));
+                expect(scenario.host.users).toEqual(mockUserList(scenario.host.user!, scenario.client.user!)));
 
             it("fires 'userreconnect' on host site", () =>
                 expect(spyReconnectHost).toHaveBeenCalledWith(scenario.client.user));

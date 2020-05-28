@@ -1,5 +1,4 @@
 import {
-    HostOptions,
     HostPacketType,
     UserInfo,
     ClientPacketType,
@@ -25,7 +24,7 @@ export interface MockPayload {
     test: string;
 }
 
-export function mockPeerOptions(override: Partial<HostOptions<MockUser>> = {}): HostOptions<MockUser> {
+export function mockPeerOptions(override: Partial<PeerOptions<MockUser>> = {}): PeerOptions<MockUser> {
     return {
         timeout: 0.05,
         applicationProtocolVersion: "1.0.0",
@@ -88,7 +87,7 @@ export interface ScenarioFourPeers {
 
 export async function scenarioFourPeers(
     open = true,
-    hostOptions?: Partial<HostOptions<MockUser>>,
+    hostOptions?: Partial<PeerOptions<MockUser>>,
     clientOptions?: Partial<PeerOptions<MockUser>>,
 ): Promise<ScenarioFourPeers> {
     resetHistory();
@@ -121,7 +120,7 @@ export async function scenarioFourPeers(
 
 export async function scenarioSimple(
     open = true,
-    hostOptions?: Partial<HostOptions<MockUser>>,
+    hostOptions?: Partial<PeerOptions<MockUser>>,
     clientOptions?: Partial<PeerOptions<MockUser>>,
 ): Promise<ScenarioSimple> {
     resetHistory();

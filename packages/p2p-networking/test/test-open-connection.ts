@@ -8,14 +8,10 @@ describe("Open connection", () => {
     beforeEach(async () => (scenario = await scenarioSimple()));
 
     it("host knows both users", () =>
-        expect(scenario.host.users).toEqual(
-            [scenario.host.user, scenario.client.user].sort((a, b) => a.id.localeCompare(b.id)),
-        ));
+        expect(scenario.host.users).toEqual(mockUserList(scenario.host.user!, scenario.client.user!)));
 
     it("client knows both users", () =>
-        expect(scenario.client.users).toEqual(
-            [scenario.host.user, scenario.client.user].sort((a, b) => a.id.localeCompare(b.id)),
-        ));
+        expect(scenario.client.users).toEqual(mockUserList(scenario.host.user!, scenario.client.user!)));
 
     it("client is client", () => expect(scenario.client.isClient).toBe(true));
 
@@ -43,7 +39,7 @@ describe("Open connection", () => {
             await new Promise((resolve) => setTimeout(resolve));
         });
 
-        it("removed the client from the set of users", () => expect(scenario.host.users).toEqual([scenario.host.user]));
+        it("removed the client from the set of users", () => expect(scenario.host.users).toEqual([scenario.host.user!]));
     });
 
     it("can't kick unknown user", () => expect(() => scenario.host.kickUser("unknown-id")).toThrowError());
@@ -53,7 +49,7 @@ describe("Open connection", () => {
             await scenario.host.kickUser(scenario.client.userId);
         });
 
-        it("doesn't know the user", () => expect(scenario.host.users).toEqual([scenario.host.user]));
+        it("doesn't know the user", () => expect(scenario.host.users).toEqual([scenario.host.user!]));
 
         it("doesn't know the user as disconnected", () => expect(scenario.host.disconnectedUsers).toEqual([]));
     });
@@ -75,13 +71,13 @@ describe("Open connection", () => {
         expect(getHistory()).toEqual([
             mockHistoryPacket(scenario.clientPeerId, scenario.hostPeerId, ClientPacketType.HELLO, {
                 versions: mockVersion(),
-                user: scenario.client.user,
+                user: scenario.client.user!,
             }),
             mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerId, HostPacketType.WELCOME, {
-                users: [mockUserInfo({ user: scenario.host.user })],
+                users: [mockUserInfo({ user: scenario.host.user! })],
             }),
             mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerId, HostPacketType.USER_CONNECTED, {
-                user: scenario.client.user,
+                user: scenario.client.user!,
             }),
         ]);
     });

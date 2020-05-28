@@ -67,7 +67,7 @@ describe("Disconnecting four peers", () => {
     it("removed the user from users", () =>
         [scenario.host, ...scenario.clients].forEach((peer) =>
             expect(peer.users).toEqual(
-                mockUserList(scenario.host.user, ...connectedClients.map((client) => client.user)),
+                mockUserList(scenario.host.user!, ...connectedClients.map((client) => client.user!)),
             ),
         ));
 
@@ -113,7 +113,7 @@ describe("Disconnecting four peers", () => {
         it("removed the user from users", () =>
             [scenario.host, ...connectedClients].forEach((peer) =>
                 expect(peer.users).toEqual(
-                    mockUserList(scenario.host.user, ...connectedClients.map((client) => client.user)),
+                    mockUserList(scenario.host.user!, ...connectedClients.map((client) => client.user!)),
                 ),
             ));
     });
@@ -158,10 +158,10 @@ describe("Disconnecting four peers", () => {
                     }),
                     mockHistoryPacket(scenario.hostPeerId, newPeerId, HostPacketType.WELCOME_BACK, {
                         users: mockUserInfoList(
-                            mockUserInfo({ user: scenario.host.user }),
-                            mockUserInfo({ user: connectedClients[0].user }),
-                            mockUserInfo({ user: disconnectedClient.user, disconnected: true }),
-                            mockUserInfo({ user: connectedClients[1].user }),
+                            mockUserInfo({ user: scenario.host.user! }),
+                            mockUserInfo({ user: connectedClients[0].user! }),
+                            mockUserInfo({ user: disconnectedClient.user!, disconnected: true }),
+                            mockUserInfo({ user: connectedClients[1].user! }),
                         ),
                         userId: disconnectedClient.userId,
                     }),
@@ -183,7 +183,7 @@ describe("Disconnecting four peers", () => {
             it("knows of all users", () =>
                 [scenario.host, ...scenario.clients].forEach((peer) =>
                     expect(peer.users).toEqual(
-                        mockUserList(scenario.host.user, ...scenario.clients.map((client) => client.user)),
+                        mockUserList(scenario.host.user!, ...scenario.clients.map((client) => client.user!)),
                     ),
                 ));
 
@@ -225,12 +225,12 @@ describe("Disconnecting four peers", () => {
             it("knows of all users", () =>
                 [scenario.host, ...connectedClients, newClient].forEach((peer) =>
                     expect(peer.users).toEqual(
-                        mockUserList(scenario.host.user, ...scenario.clients.map((client) => client.user)),
+                        mockUserList(scenario.host.user!, ...scenario.clients.map((client) => client.user!)),
                     ),
                 ));
 
             it("fires 'userreconnect'", () =>
-                spyReconnects.forEach((spy) => expect(spy).toHaveBeenCalledWith(disconnectedClient.user)));
+                spyReconnects.forEach((spy) => expect(spy).toHaveBeenCalledWith(disconnectedClient.user!)));
 
             it("fires 'open' on client site", () => expect(spyOpen).toHaveBeenCalledWith());
 
