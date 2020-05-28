@@ -1,4 +1,3 @@
-jest.mock("peerjs");
 import { ClientPacketType, HostPacketType, ErrorReason } from "../src";
 import { getHistory } from "./packet-history";
 import { mockHistoryPacket, mockVersion, mockUserInfo, ScenarioSimple, scenarioSimple, mockUserList } from "./utils";
