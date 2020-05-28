@@ -72,9 +72,8 @@ export class Users<TUser extends User> {
         if (clear) {
             this.users.clear();
         }
-        for (const { user, lastPingDate, roundTripTime } of users) {
-            this.addUser(user);
-            this.updatePingInfo(user.id, { lastPingDate, roundTripTime });
+        for (const info of users) {
+            this.users.set(info.user.id, { ...info });
         }
     }
 
