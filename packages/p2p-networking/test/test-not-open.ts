@@ -6,17 +6,17 @@ describe("Closed connection", () => {
 
     beforeEach(async () => (scenario = await scenarioSimple(false)));
 
-    it("scenario.host has no connection id", () => expect(scenario.host.hostConnectionId).toBe(undefined));
+    it("host has no connection id", () => expect(scenario.host.hostConnectionId).toBe(undefined));
 
-    it("scenario.client is not scenario.client", () => expect(scenario.client.isClient).toBe(false));
+    it("client is not client", () => expect(scenario.client.isClient).toBe(false));
 
-    it("scenario.client is not scenario.host", () => expect(scenario.client.isHost).toBe(false));
+    it("client is not host", () => expect(scenario.client.isHost).toBe(false));
 
-    it("scenario.client is not connected", () => expect(scenario.client.isConnected).toBe(false));
+    it("client is not connected", () => expect(scenario.client.isConnected).toBe(false));
 
-    it("scenario.client is not connecting", () => expect(scenario.client.isConnecting).toBe(false));
+    it("client is not connecting", () => expect(scenario.client.isConnecting).toBe(false));
 
-    it("scenario.client is disconnected", () => expect(scenario.client.isDisconnected).toBe(true));
+    it("client is disconnected", () => expect(scenario.client.isDisconnected).toBe(true));
 
     it("can't close peer that isn't open", () => expect(() => scenario.host.close()).toThrowError());
 

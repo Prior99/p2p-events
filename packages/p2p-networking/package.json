@@ -36,7 +36,8 @@
         "generated"
     ],
     "jest": {
-        "preset": "../../jest-defaults.json"
+        "preset": "../../jest-defaults.json",
+        "setupFilesAfterEnv": ["./test/setup.ts"]
     },
     "dependencies": {
         "debug": "^4.1.1",

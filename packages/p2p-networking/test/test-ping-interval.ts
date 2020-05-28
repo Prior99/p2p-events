@@ -12,7 +12,7 @@ describe("Ping interval", () => {
             host.stopPing();
             done();
         });
-        host = await createHost(mockPeerOptions());
+        host = await createHost(mockPeerOptions({ pingInterval: 0.001 }));
         client = await createClient(mockPeerOptions(), host.hostConnectionId!);
         resetHistory();
         client.once("pinginfo", spyPing);

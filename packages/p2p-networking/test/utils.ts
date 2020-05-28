@@ -28,8 +28,7 @@ export interface MockPayload {
 export function mockPeerOptions(override: Partial<HostOptions<MockUser>> = {}): HostOptions<MockUser> {
     return {
         timeout: 0.02,
-        pingInterval: 0.001,
-        applicationProtocolVersion: "some",
+        applicationProtocolVersion: "1.0.0",
         user: { name: "test" },
         welcomeDelay: 0.001,
         ...override,

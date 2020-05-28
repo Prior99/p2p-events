@@ -1,7 +1,7 @@
 jest.mock("peerjs");
 import { ClientPacketType, HostPacketType, ErrorReason } from "../src";
 import { getHistory } from "./packet-history";
-import { mockHistoryPacket, mockVersion, mockUserInfo, ScenarioSimple, scenarioSimple } from "./utils";
+import { mockHistoryPacket, mockVersion, mockUserInfo, ScenarioSimple, scenarioSimple, mockUserList } from "./utils";
 
 describe("Open connection", () => {
     let scenario: ScenarioSimple;
@@ -35,6 +35,9 @@ describe("Open connection", () => {
     it("has the same host connection ids for both peers", () =>
         expect(scenario.host.hostConnectionId).toBe(scenario.client.hostConnectionId));
 
+    it("can't close connection to itself", () =>
+        expect(() => scenario.host.closeConnectionToClient(scenario.host.userId)).toThrowError());
+
     describe("after closing the connection to the client", () => {
         beforeEach(async () => {
             scenario.host.closeConnectionToClient(scenario.client.userId);
@@ -43,9 +46,6 @@ describe("Open connection", () => {
 
         it("removed the client from the set of users", () => expect(scenario.host.users).toEqual([scenario.host.user]));
     });
-
-    it("can't close connection to itself", () =>
-        expect(() => scenario.host.closeConnectionToClient(scenario.host.userId)).toThrowError());
 
     describe("after closing the connection to an unknown client", () => {
         let spyError: jest.MockedFunction<any>;
@@ -76,16 +76,17 @@ describe("Open connection", () => {
     });
 
     it("has both users on host side", () => {
-        const expected = [
-            {
-                id: scenario.host.userId,
-                name: "Mr. Host",
-            },
-            {
-                id: scenario.client.userId,
-                name: "Mr. Client",
-            },
-        ].sort((a, b) => a.id.localeCompare(b.id));
-        expect(scenario.host.users).toEqual(expected);
+        expect(scenario.host.users).toEqual(
+            mockUserList(
+                {
+                    id: scenario.host.userId,
+                    name: "Mr. Host",
+                },
+                {
+                    id: scenario.client.userId,
+                    name: "Mr. Client",
+                },
+            ),
+        );
     });
 });
