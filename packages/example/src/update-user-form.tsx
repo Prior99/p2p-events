@@ -5,7 +5,7 @@ import { TodoUser } from "./types";
 
 export interface UpdateUserFormProps {
     onChange: (update: Omit<Partial<TodoUser>, "id">) => void;
-    user: TodoUser;
+    user?: TodoUser;
 }
 
 @observer
@@ -13,7 +13,7 @@ export class UpdateUserForm extends React.Component<UpdateUserFormProps> {
     @observable private formName: string | undefined;
 
     @computed private get name(): string {
-        return this.formName ?? this.props.user.name;
+        return this.formName ?? this.props.user?.name ?? "";
     }
 
     @action.bound private handleSubmit(evt: React.SyntheticEvent<HTMLFormElement>): void {

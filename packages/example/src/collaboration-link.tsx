@@ -3,13 +3,14 @@ import { observer } from "mobx-react";
 
 export interface CollaborationLinkProps {
     peerId?: string;
+    userId?: string;
 }
 
 @observer
 export class CollaborationLink extends React.Component<CollaborationLinkProps> {
     public render(): JSX.Element {
-        const { peerId } = this.props;
-        const url = `${location.origin}${location.pathname}#${peerId}`;
+        const { peerId, userId } = this.props;
+        const url = `${location.origin}${location.pathname}#${peerId}/${userId ?? ""}`;
         return peerId ? (
             <a href={url} target="_blank" rel="noreferrer">
                 Link

@@ -1,25 +1,27 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { Peer, PingInfo, createClient, createHost, PeerOptions } from "p2p-networking";
+import { ObservablePeer, createObservableClient, createObservableHost, ObservableHost } from "p2p-networking-mobx";
 import { Messages, TodoUser, AddTodo, CheckTodo, DeleteTodo, Todo, CurrentState } from "./types";
 import { App } from "./app";
-import { observable } from "mobx";
+import { observable, reaction } from "mobx";
+import { PeerOptions } from "p2p-networking";
 
 const applicationProtocolVersion = "1.0.0";
 
-async function createPeer(): Promise<Peer<TodoUser, Messages>> {
+async function createPeer(): Promise<ObservablePeer<TodoUser, Messages>> {
     const options: PeerOptions<TodoUser> = {
-        user: { name: "Unknown" },
         applicationProtocolVersion,
         peerJsOptions: {
             host: "peerjs.92k.de",
             secure: true,
         },
     };
+    const user = { name: "Unknown" };
     if (location.hash) {
-        return await createClient(options, location.hash.replace("#", ""));
+        const [peerId, userId] = location.hash.replace("#", "").split("/");
+        return await createObservableClient(options, peerId, userId ? userId : user);
     }
-    return await createHost({ ...options, pingInterval: 5 });
+    return await createObservableHost({ ...options, pingInterval: 5 }, user);
 }
 
 async function main(): Promise<void> {
@@ -31,8 +33,6 @@ async function main(): Promise<void> {
     const currentState = peer.message<CurrentState>(Messages.CURRENT_STATE);
 
     const todos = observable.array<Todo>([]);
-    const users = observable.array<TodoUser>(peer.users);
-    const pingInfo = observable.map<string, PingInfo>();
 
     addTodo.subscribe(({ title, id }, createdBy) => todos.push({ title, id, createdBy }));
     checkTodo.subscribe(({ id }, checkedBy) => {
@@ -47,26 +47,26 @@ async function main(): Promise<void> {
     currentState.subscribe(({ todos: currentTodods }) => todos.replace(currentTodods));
 
     peer.on("userconnect", (user) => {
-        users.replace(peer.users);
         if (peer.isHost) {
             currentState.send({ todos }, user.id);
         }
     });
-    peer.on("userdisconnect", () => users.replace(peer.users));
-    peer.on("userupdate", () => users.replace(peer.users));
-    peer.on("pinginfo", (newPingInfo) => pingInfo.replace(newPingInfo));
+
+    peer.on("userreconnect", (user) => {
+        if (peer.isHost) {
+            currentState.send({ todos }, user.id);
+        }
+    });
 
     ReactDOM.render(
         <App
             todos={todos}
-            user={peer.user}
-            users={users}
             onTodoCheck={(id) => checkTodo.send({ id })}
             onTodoDelete={(id) => deleteTodo.send({ id })}
             onTodoCreate={(title) => addTodo.send({ id: Math.round(Math.random() * 10000), title })}
+            onUserKick={peer instanceof ObservableHost ? (id) => peer.kickUser(id) : undefined}
             onUpdateUser={(update) => peer.updateUser(update)}
-            connectionId={peer.hostConnectionId ?? ""}
-            pingInfo={pingInfo}
+            peer={peer}
         />,
         document.getElementById("app"),
     );
