@@ -44,11 +44,11 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
      * Connect to a network.
      *
      * @param remotePeerId The id of the peer to connect to.
-     * @param user If reconnecting to a previously disconnected session, provide the user id.
+     * @param userInit If reconnecting to a previously disconnected session, provide the user id.
      *     Otherwise, if connecting initially, provide a user.
      * @returns A promise resolving once the client is fully connected.
      */
-    public async open(remotePeerId: string, user: string | Omit<TUser, "id">): Promise<ClientOpenResult> {
+    public async open(remotePeerId: string, userInit: string | Omit<TUser, "id">): Promise<ClientOpenResult> {
         const peerOpenResult = await super.createLocalPeer();
         this.networkMode = NetworkMode.CLIENT;
         this.emitEvent("networkchange", this.networkMode);
@@ -63,24 +63,25 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
                 this.connection!.on("data", (data) => this.handleHostPacket(data));
                 // In order to avoid collision in Safari and Chrome on Windows, wait until greeting.
                 await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
-                if (typeof user === "string") {
+                if (typeof userInit === "string") {
                     this.sendClientPacketToHost({
                         packetType: ClientPacketType.HELLO_AGAIN,
                         versions: {
                             application: this.options.applicationProtocolVersion,
                             p2pNetwork: libraryVersion,
                         },
-                        userId: user,
+                        userId: userInit,
                     });
                 } else {
-                    this.userManager.addUser({ ...user, id: this.userId } as any); // eslint-disable-line
+                    const user = { ...userInit, id: this.userId } as TUser;
+                    this.userManager.addUser(user);
                     this.sendClientPacketToHost({
                         packetType: ClientPacketType.HELLO,
                         versions: {
                             application: this.options.applicationProtocolVersion,
                             p2pNetwork: libraryVersion,
                         },
-                        user: this.user,
+                        user,
                     });
                 }
                 const peerErrorListener = (error: Error): void => {

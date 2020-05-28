@@ -316,10 +316,10 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
     }
 
     /**
-     * Will return this user instace associated with this peer.
+     * Will return this user instance associated with this peer.
      */
-    public get user(): TUser {
-        return this.userManager.getUser(this.userId)!;
+    public get user(): TUser | undefined {
+        return this.userManager.getUser(this.userId);
     }
 
     /**
