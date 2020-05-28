@@ -37,7 +37,7 @@
         "eslint-config-prettier": "^6.11.0",
         "eslint-plugin-prettier": "^3.1.3",
         "mobx": "^5.15.4",
-        "p2p-networking": "^0.1.5",
+        "p2p-networking": "*",
         "prettier": "^2.0.5",
         "typescript": "^3.9.3"
     },

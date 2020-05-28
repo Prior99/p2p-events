@@ -15,6 +15,7 @@ export class ObservableHost<TUser extends User, TMessageType extends string | nu
     public startPing: Host<TUser, TMessageType>["startPing"] = (...args) => this.host.startPing(...args);
     public stopPing: Host<TUser, TMessageType>["stopPing"] = (...args) => this.host.stopPing(...args);
     public open: Host<TUser, TMessageType>["open"] = (...args) => this.host.open(...args);
+    public kickUser: Host<TUser, TMessageType>["kickUser"] = (...args) => this.host.kickUser(...args);
 
     public get host(): Host<TUser, TMessageType> {
         return this.peer as Host<TUser, TMessageType>;

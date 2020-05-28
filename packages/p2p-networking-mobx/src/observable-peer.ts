@@ -8,6 +8,7 @@ export abstract class ObservablePeer<TUser extends User, TMessageType extends st
     @observable public hostConnectionId: string | undefined;
     @observable public networkMode: NetworkMode;
     @observable public pingInfos = new Map<string, PingInfo>();
+    @observable public disconnectedUsers: TUser[] = [];
 
     @observable private userMap = new Map<string, TUser>();
 
@@ -22,11 +23,32 @@ export abstract class ObservablePeer<TUser extends User, TMessageType extends st
         );
         this.peer.on(
             "userdisconnect",
-            action((userId) => this.userMap.delete(userId)),
+            action((userId) => {
+                const user = this.userMap.get(userId);
+                if (!user) {
+                    return;
+                }
+                this.disconnectedUsers.push(user);
+                this.userMap.delete(userId);
+            }),
         );
         this.peer.on(
             "userreconnect",
-            action((user) => this.userMap.set(user.id, user)),
+            action((user) => {
+                this.disconnectedUsers = this.disconnectedUsers.filter(
+                    (disconnectedUser) => disconnectedUser.id !== user.id,
+                );
+                this.userMap.set(user.id, user);
+            }),
+        );
+        this.peer.on(
+            "userkick",
+            action((userId) => {
+                this.userMap.delete(userId);
+                this.disconnectedUsers = this.disconnectedUsers.filter(
+                    (disconnectedUser) => disconnectedUser.id !== userId,
+                );
+            }),
         );
         this.peer.on(
             "userupdate",
@@ -42,6 +64,7 @@ export abstract class ObservablePeer<TUser extends User, TMessageType extends st
                 for (const user of this.peer.users) {
                     this.userMap.set(user.id, user);
                 }
+                this.disconnectedUsers = this.peer.disconnectedUsers;
                 this.pingInfos = peer.pingInfos;
                 this.hostConnectionId = peer.hostConnectionId;
             }),
@@ -56,7 +79,7 @@ export abstract class ObservablePeer<TUser extends User, TMessageType extends st
         return this.peer.versions;
     }
 
-    public get options(): PeerOptions<TUser> & { timeout: number } {
+    public get options(): PeerOptions<TUser> & { timeout: number; welcomeDelay: number } {
         return this.peer.options;
     }
 
@@ -80,8 +103,8 @@ export abstract class ObservablePeer<TUser extends User, TMessageType extends st
         return this.networkMode === NetworkMode.HOST;
     }
 
-    @computed public get user(): TUser {
-        return this.userMap.get(this.userId)!;
+    @computed public get user(): TUser | undefined {
+        return this.userMap.get(this.userId);
     }
 
     @computed public get users(): TUser[] {
