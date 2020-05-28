@@ -137,6 +137,10 @@ export interface PeerOptions<TUser extends User> {
      * Optional number of seconds for delaying the welcome messages.
      */
     welcomeDelay?: number;
+    /**
+     * If specified, the number of seconds between two pings. If omitted, no pinging will be performed.
+     */
+    pingInterval?: number;
 }
 
 /**
@@ -266,6 +270,10 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      * once the user has been updated. This promise is stored here.
      */
     protected updateUserListeners: PromiseListener<[TUser], [Error]>[] = [];
+    /**
+     * Timeout for detecting timeouts.
+     */
+    protected pingTimeout?: ReturnType<typeof setTimeout>;
 
     /**
      * Create a new peer.
@@ -576,6 +584,16 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                     packetType: ClientPacketType.PONG,
                     initiationDate: packet.initiationDate,
                 });
+                if (this.pingTimeout) {
+                    clearTimeout(this.pingTimeout);
+                    this.pingTimeout = undefined;
+                }
+                if (this.options.pingInterval) {
+                    this.pingTimeout = setTimeout(() => {
+                        this.networkMode = NetworkMode.DISCONNECTED;
+                        this.throwError(new NetworkError("Connection to host timed out."))
+                    },this.options.pingInterval * 1000 * 2);
+                }
                 break;
             case HostPacketType.RELAYED_MESSAGE: {
                 const { message } = packet;

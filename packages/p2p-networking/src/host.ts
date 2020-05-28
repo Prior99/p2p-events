@@ -47,10 +47,6 @@ export interface RelayedMessageState<TMessageType extends string | number, TPayl
     targets?: string[];
 }
 
-export interface HostOptions<TUser extends User> extends PeerOptions<TUser> {
-    pingInterval?: number | undefined;
-}
-
 export interface PendingPing {
     listener: PromiseListener<[], [Error]>;
     returned: Set<string>;
@@ -64,7 +60,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
     /**
      * The options specified when this instance was created.
      */
-    public readonly options: HostOptions<TUser> & typeof peerDefaultOptions;
+    public readonly options: PeerOptions<TUser> & typeof peerDefaultOptions;
 
     /**
      * All PeerJS connections to this host associated with their corresponding user ids.
@@ -93,7 +89,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
     /**
      * @param inputOptions Options used by this instance.
      */
-    constructor(inputOptions: HostOptions<TUser>) {
+    constructor(inputOptions: PeerOptions<TUser>) {
         super(inputOptions);
         this.options = {
             ...peerDefaultOptions,
@@ -475,7 +471,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
  * @returns A promise that resolves with the instance once the host is ready to accept connections.
  */
 export async function createHost<TUser extends User, TMessageType extends string | number>(
-    options: HostOptions<TUser>,
+    options: PeerOptions<TUser>,
     user: Omit<TUser, "id">,
 ): Promise<Host<TUser, TMessageType>> {
     const host = new Host<TUser, TMessageType>(options);

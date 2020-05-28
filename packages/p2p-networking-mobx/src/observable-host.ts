@@ -1,11 +1,11 @@
-import { User, Host, HostOptions } from "p2p-networking";
+import { User, Host, PeerOptions } from "p2p-networking";
 import { ObservablePeer } from "./observable-peer";
 import { Public } from "./types";
 
 export class ObservableHost<TUser extends User, TMessageType extends string | number>
     extends ObservablePeer<TUser, TMessageType>
     implements Public<Host<TUser, TMessageType>> {
-    constructor(inputOptions: HostOptions<TUser>) {
+    constructor(inputOptions: PeerOptions<TUser>) {
         super(new Host(inputOptions));
     }
 
@@ -23,7 +23,7 @@ export class ObservableHost<TUser extends User, TMessageType extends string | nu
 }
 
 export async function createObservableHost<TUser extends User, TMessageType extends string | number>(
-    options: HostOptions<TUser>,
+    options: PeerOptions<TUser>,
     user: Omit<TUser, "id">,
 ): Promise<ObservableHost<TUser, TMessageType>> {
     const host = new ObservableHost<TUser, TMessageType>(options);

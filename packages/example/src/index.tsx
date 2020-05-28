@@ -3,7 +3,7 @@ import * as ReactDOM from "react-dom";
 import { ObservablePeer, createObservableClient, createObservableHost, ObservableHost } from "p2p-networking-mobx";
 import { Messages, TodoUser, AddTodo, CheckTodo, DeleteTodo, Todo, CurrentState } from "./types";
 import { App } from "./app";
-import { observable, reaction } from "mobx";
+import { observable } from "mobx";
 import { PeerOptions } from "p2p-networking";
 
 const applicationProtocolVersion = "1.0.0";
