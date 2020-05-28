@@ -332,7 +332,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      * Will return a copy of the currently connected users.
      */
     public get users(): TUser[] {
-        return this.userManager.allUsers;
+        return this.userManager.connectedUsers;
     }
 
     /**
@@ -340,7 +340,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      */
     public get pingInfos(): Map<string, PingInfo> {
         const map = new Map<string, PingInfo>();
-        for (const { user, lastPingDate, roundTripTime } of this.userManager.all) {
+        for (const { user, lastPingDate, roundTripTime } of this.userManager.connected) {
             map.set(user.id, { lastPingDate, roundTripTime });
         }
         return map;
@@ -527,9 +527,12 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
     protected handleHostPacket<TPayload>(packet: HostPacket<TMessageType, TUser, TPayload>): void {
         debug("Received packet from host of type %s: %O", packet.packetType, packet);
         switch (packet.packetType) {
+            case HostPacketType.RECONNECT_FAILED:
+                this.throwError(new Error("Reconnect failed."));
+                break;
             case HostPacketType.WELCOME_BACK:
                 this.userId = packet.userId;
-                this.userManager.initialize(packet.users);
+                this.userManager.initialize(packet.users, true);
                 this.emitEvent("connect");
                 break;
             case HostPacketType.WELCOME:
@@ -620,7 +623,6 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                     try {
                         this.userManager.updatePingInfo(userId, pingInfo);
                     } catch (err) /* istanbul ignore next */ {
-                        
                         this.throwError(err);
                         return;
                     }

@@ -1,4 +1,5 @@
 import { v4 as uuid } from "uuid";
+import { clone } from "ramda";
 import { addEntry } from "../packet-history";
 
 const connections = new Map<string, string[]>();
@@ -71,7 +72,7 @@ export default class MockPeerJS {
                     addConnection(this.id, remoteId, handler);
                 }),
                 off: jest.fn(() => undefined),
-                send: jest.fn((data: any) => send(remoteId, this.id, data)),
+                send: jest.fn((data: any) => send(remoteId, this.id, clone(data))),
                 close: jest.fn(),
             });
         }
@@ -90,7 +91,7 @@ export default class MockPeerJS {
                 addConnection(remoteId, this.id, handler);
             }),
             off: jest.fn(() => undefined),
-            send: jest.fn((data: any) => send(this.id, remoteId, data)),
+            send: jest.fn((data: any) => send(this.id, remoteId, clone(data))),
             close: jest.fn(),
         };
     });

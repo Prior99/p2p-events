@@ -163,7 +163,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         await promise;
         this.sendHostPacketToAll({
             packetType: HostPacketType.PING_INFO,
-            pingInfos: this.userManager.all.map(({ lastPingDate, roundTripTime, user }) => ({
+            pingInfos: this.userManager.connected.map(({ lastPingDate, roundTripTime, user }) => ({
                 lastPingDate,
                 roundTripTime,
                 userId: user.id,
@@ -293,7 +293,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                 relayedMessageState.acknowledgedBy.add(userId);
                 if (
                     relayedMessageState.acknowledgedBy.size ===
-                    (relayedMessageState.targets?.length ?? this.userManager.count)
+                    (relayedMessageState.targets?.length ?? this.userManager.connectedCount)
                 ) {
                     this.sendHostPacketToUser(relayedMessageState.message.originUserId, {
                         packetType: HostPacketType.ACKNOWLEDGED_BY_ALL,
@@ -356,49 +356,50 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         let userId: string;
         dataConnection.on("data", async (json) => {
             const message: ClientPacket<TMessageType, TUser, unknown> = json;
-            switch (message.packetType) {
-                case ClientPacketType.HELLO:
-                    userId = message.user.id;
-                    if (!this.checkVersions(message.versions, dataConnection)) {
-                        break;
-                    }
-                    this.connections.set(userId, { dataConnection, userId });
-                    // In order to avoid collision in Safari and Chrome on Windows, wait until greeting.
-                    await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
+            if (message.packetType !== ClientPacketType.HELLO && message.packetType !== ClientPacketType.HELLO_AGAIN) {
+                this.handleClientPacket(userId, message);
+                return;
+            }
+            if (!this.checkVersions(message.versions, dataConnection)) {
+                return;
+            }
+            // In order to avoid collision in Safari and Chrome on Windows, wait until greeting.
+            await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
+            if (message.packetType === ClientPacketType.HELLO) {
+                userId = message.user.id;
+                this.connections.set(userId, { dataConnection, userId });
+                this.sendHostPacketToPeer(dataConnection, {
+                    packetType: HostPacketType.WELCOME,
+                    users: this.userManager.all,
+                });
+                // In order to avoid collision in Safari and Chrome on Windows, wait until announcing.
+                await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
+                this.sendHostPacketToAll({
+                    packetType: HostPacketType.USER_CONNECTED,
+                    user: message.user,
+                });
+            } else {
+                userId = message.userId;
+                const userInfo = this.userManager.getUserInfo(userId);
+                if (!userInfo || !userInfo.disconnected) {
                     this.sendHostPacketToPeer(dataConnection, {
-                        packetType: HostPacketType.WELCOME,
-                        users: this.userManager.all,
+                        packetType: HostPacketType.RECONNECT_FAILED,
                     });
-                    // In order to avoid collision in Safari and Chrome on Windows, wait until announcing.
-                    await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
-                    this.sendHostPacketToAll({
-                        packetType: HostPacketType.USER_CONNECTED,
-                        user: message.user,
-                    });
-                    break;
-                case ClientPacketType.HELLO_AGAIN:
-                    userId = message.userId;
-                    if (!this.checkVersions(message.versions, dataConnection)) {
-                        break;
-                    }
-                    this.connections.set(userId, { dataConnection, userId });
-                    // In order to avoid collision in Safari and Chrome on Windows, wait until greeting.
-                    await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
-                    this.sendHostPacketToPeer(dataConnection, {
-                        packetType: HostPacketType.WELCOME_BACK,
-                        users: this.userManager.all,
-                        userId,
-                    });
-                    // In order to avoid collision in Safari and Chrome on Windows, wait until announcing.
-                    await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
-                    this.sendHostPacketToAll({
-                        packetType: HostPacketType.USER_RECONNECTED,
-                        userId,
-                    });
-                    break;
-                default:
-                    this.handleClientPacket(userId, message);
-                    break;
+                    dataConnection.close();
+                    return;
+                }
+                this.connections.set(userId, { dataConnection, userId });
+                this.sendHostPacketToPeer(dataConnection, {
+                    packetType: HostPacketType.WELCOME_BACK,
+                    users: this.userManager.all,
+                    userId,
+                });
+                // In order to avoid collision in Safari and Chrome on Windows, wait until announcing.
+                await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
+                this.sendHostPacketToAll({
+                    packetType: HostPacketType.USER_RECONNECTED,
+                    userId,
+                });
             }
         });
     }

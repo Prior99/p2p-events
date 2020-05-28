@@ -18,6 +18,7 @@ export interface Versions {
 export const enum HostPacketType {
     WELCOME = "welcome",
     WELCOME_BACK = "welcome back",
+    RECONNECT_FAILED = "reconnect failed",
     USER_CONNECTED = "user connected",
     USER_DISCONNECTED = "user disconnected",
     USER_RECONNECTED = "user reconnected",
@@ -71,6 +72,10 @@ export interface HostPacketUserDisconnected {
     userId: string;
 }
 
+export interface HostPacketReconnectFailed {
+    packetType: HostPacketType.RECONNECT_FAILED;
+}
+
 export interface HostPacketPing {
     packetType: HostPacketType.PING;
     initiationDate: number;
@@ -106,6 +111,7 @@ export type HostPacket<TMessageType extends string | number, TUser extends User,
     | HostPacketWelcomeBack<TUser>
     | HostPacketUserConnected<TUser>
     | HostPacketUserDisconnected
+    | HostPacketReconnectFailed
     | HostPacketUserReconnected
     | HostPacketPing
     | HostPacketRelayedMessage<TMessageType, TPayload>

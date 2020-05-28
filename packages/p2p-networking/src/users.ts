@@ -33,8 +33,12 @@ export class Users<TUser extends User> {
         user.disconnected = true;
     }
 
+    public getUserInfo(userId: string): UserInfo<TUser> | undefined {
+        return this.users.get(userId);
+    }
+
     public getUser(userId: string): TUser | undefined {
-        return this.users.get(userId)?.user;
+        return this.getUserInfo(userId)?.user;
     }
 
     public updateUser(userId: string, update: Omit<Partial<TUser>, "id">): void {
@@ -64,7 +68,10 @@ export class Users<TUser extends User> {
         });
     }
 
-    public initialize(users: UserInfo<TUser>[]): void {
+    public initialize(users: UserInfo<TUser>[], clear = false): void {
+        if (clear) {
+            this.users.clear();
+        }
         for (const { user, lastPingDate, roundTripTime } of users) {
             this.addUser(user);
             this.updatePingInfo(user.id, { lastPingDate, roundTripTime });
@@ -76,12 +83,18 @@ export class Users<TUser extends User> {
     }
 
     public get all(): UserInfo<TUser>[] {
-        return Array.from(this.users.values())
-            .filter((user) => !user.disconnected)
-            .sort((a, b) => a.user.id.localeCompare(b.user.id));
+        return Array.from(this.users.values()).sort((a, b) => a.user.id.localeCompare(b.user.id));
     }
 
-    public get count(): number {
-        return this.all.length;
+    public get connectedUsers(): TUser[] {
+        return this.connected.map(({ user }) => user);
+    }
+
+    public get connected(): UserInfo<TUser>[] {
+        return this.all.filter((user) => !user.disconnected);
+    }
+
+    public get connectedCount(): number {
+        return this.connected.length;
     }
 }
