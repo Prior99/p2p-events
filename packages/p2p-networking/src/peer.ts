@@ -130,10 +130,6 @@ export interface PeerOptions<TUser extends User> {
      */
     applicationProtocolVersion: string;
     /**
-     * Initial properties for the user associated with this peer.
-     */
-    user: Omit<TUser, "id">;
-    /**
      * Optional options that will be handed to PeerJS when initialized.
      */
     peerJsOptions?: PeerJS.PeerJSOption;
@@ -176,6 +172,7 @@ export type PeerEventArgumentMapping<TMessageType extends string | number, TUser
     networkchange: [NetworkMode];
     open: [];
     userreconnect: [TUser];
+    userkick: [string];
 };
 
 /**
@@ -260,6 +257,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         networkchange: new Set(),
         open: new Set(),
         userreconnect: new Set(),
+        userkick: new Set(),
     };
     /**
      * Listeners for the result of updating the user. `.updateUser()` returns a promise that should resolve
@@ -272,10 +270,6 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      * @param inputOptions Options used for configuring this peer.
      */
     constructor(inputOptions: PeerOptions<TUser>) {
-        this.userManager.addUser({
-            ...inputOptions.user,
-            id: this.userId,
-        } as any); // eslint-disable-line
         this.options = {
             ...peerDefaultOptions,
             ...inputOptions,
@@ -331,6 +325,13 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
     /**
      * Will return a copy of the currently connected users.
      */
+    public get disconnectedUsers(): TUser[] {
+        return this.userManager.all.filter((userInfo) => userInfo.disconnected).map((userInfo) => userInfo.user);
+    }
+
+    /**
+     * Will return a copy of the currently connected users.
+     */
     public get users(): TUser[] {
         return this.userManager.connectedUsers;
     }
@@ -358,6 +359,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      *  * `"error"`: When any error was encountered.
      *  * `"open"`: When the connection is open and ready to use.
      *  * `"userreconnect"`: When a user reconnected.
+     *  * `"userkick"`: When a user is kicked.
      * @param handler The handler that shall be called if the specified event occurs. The arguments
      *    vary depending on the event's type.
      */
@@ -527,6 +529,15 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
     protected handleHostPacket<TPayload>(packet: HostPacket<TMessageType, TUser, TPayload>): void {
         debug("Received packet from host of type %s: %O", packet.packetType, packet);
         switch (packet.packetType) {
+            case HostPacketType.KICK_USER: {
+                const userInfo = this.userManager.getUserInfo(packet.userId);
+                if (!userInfo?.disconnected) {
+                    this.emitEvent("userdisconnect", packet.userId);
+                }
+                this.userManager.removeUser(packet.userId);
+                this.emitEvent("userkick", packet.userId);
+                break;
+            }
             case HostPacketType.RECONNECT_FAILED:
                 this.throwError(new Error("Reconnect failed."));
                 break;

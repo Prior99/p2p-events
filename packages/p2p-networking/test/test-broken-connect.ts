@@ -7,9 +7,9 @@ describe("With peerjs encountering an error", () => {
     let rejectResult: any;
 
     beforeEach(async () => {
-        client = new Client(mockPeerOptions({ user: { name: "Mr. Client" } }));
+        client = new Client(mockPeerOptions());
         try {
-            await client.open("broken-id");
+            await client.open("broken-id", { name: "Mr. Client" });
         } catch (err) {
             rejectResult = err;
         }

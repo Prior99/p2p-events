@@ -7,9 +7,11 @@ describe("Incompatible versions", () => {
     let host: Host<MockUser, MockMessageType>;
 
     beforeEach(async () => {
-        host = await createHost(mockPeerOptions({ applicationProtocolVersion: "1" }));
+        host = await createHost(mockPeerOptions({ applicationProtocolVersion: "1" }), { name: "Mr. Host" });
         try {
-            await createClient(mockPeerOptions({ applicationProtocolVersion: "2" }), host.hostConnectionId!);
+            await createClient(mockPeerOptions({ applicationProtocolVersion: "2" }), host.hostConnectionId!, {
+                name: "Mr. Client",
+            });
         } catch (err) {
             rejectResult = err;
         }

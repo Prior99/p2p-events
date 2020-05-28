@@ -1,5 +1,5 @@
-import { ClientPacketType, HostPacketType } from "../src";
-import { getHistory } from "./packet-history";
+import { ClientPacketType, HostPacketType, Client } from "../src";
+import { getHistory, resetHistory } from "./packet-history";
 import {
     mockHistoryPacket,
     mockUserInfo,
@@ -8,6 +8,8 @@ import {
     mockUserInfoList,
     scenarioFourPeers,
     ScenarioFourPeers,
+    MockUser,
+    MockMessageType,
 } from "./utils";
 
 describe("Four peers", () => {
@@ -91,5 +93,62 @@ describe("Four peers", () => {
                 ),
             ),
         );
+    });
+
+    describe("after kicking a client", () => {
+        let connectedClients: Client<MockUser, MockMessageType>[];
+        let kickedClient: Client<MockUser, MockMessageType>;
+        let spyUserKicks: jest.MockedFunction<any>[];
+        let spyUserDisconnecteds: jest.MockedFunction<any>[];
+
+        beforeEach(async (done) => {
+            resetHistory();
+            spyUserKicks = [jest.fn(), jest.fn(), jest.fn(), jest.fn()];
+            spyUserDisconnecteds = [jest.fn(), jest.fn(), jest.fn(), jest.fn()];
+            kickedClient = scenario.clients[1];
+            connectedClients = [scenario.clients[0], scenario.clients[2]];
+            let emitCount = 0;
+            [scenario.host, ...scenario.clients].forEach((peer, index) => {
+                peer.on("userkick", spyUserKicks[index]);
+                peer.on("userdisconnect", spyUserDisconnecteds[index]);
+                peer.once("userdisconnect", () => {
+                    emitCount++;
+                    if (emitCount === 4) {
+                        done();
+                    }
+                });
+            });
+            await scenario.host.kickUser(scenario.clients[1].userId);
+        });
+
+        it("has sent the expected Packets", () => {
+            expect(getHistory()).toEqual([
+                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[0], HostPacketType.KICK_USER, {
+                    userId: kickedClient.userId,
+                }),
+                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[1], HostPacketType.KICK_USER, {
+                    userId: kickedClient.userId,
+                }),
+                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[2], HostPacketType.KICK_USER, {
+                    userId: kickedClient.userId,
+                }),
+            ]);
+        });
+
+        it("fires 'userkick'", () =>
+            spyUserKicks.forEach((spy) => expect(spy).toHaveBeenCalledWith(kickedClient.userId)));
+
+        it("fires 'userdisconnecteds'", () =>
+            spyUserDisconnecteds.forEach((spy) => expect(spy).toHaveBeenCalledWith(kickedClient.userId)));
+
+        it("doesn't know the user", () =>
+            [scenario.host, ...scenario.clients].forEach((peer) =>
+                expect(peer.users).toEqual(
+                    mockUserList(scenario.host.user, ...connectedClients.map((client) => client.user)),
+                ),
+            ));
+
+        it("doesn't know the user as disconnected", () =>
+            [scenario.host, ...scenario.clients].forEach((peer) => expect(peer.disconnectedUsers).toEqual([])));
     });
 });

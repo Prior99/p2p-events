@@ -1,4 +1,4 @@
-import { ClientPacketType, HostPacketType, ErrorReason } from "../src";
+import { ClientPacketType, HostPacketType, ErrorReason, Host } from "../src";
 import { getHistory } from "./packet-history";
 import { mockHistoryPacket, mockVersion, mockUserInfo, ScenarioSimple, scenarioSimple, mockUserList } from "./utils";
 
@@ -44,6 +44,18 @@ describe("Open connection", () => {
         });
 
         it("removed the client from the set of users", () => expect(scenario.host.users).toEqual([scenario.host.user]));
+    });
+
+    it("can't kick unknown user", () => expect(() => scenario.host.kickUser("unknown-id")).toThrowError());
+
+    describe("after kicking the client", () => {
+        beforeEach(async () => {
+            await scenario.host.kickUser(scenario.client.userId);
+        });
+
+        it("doesn't know the user", () => expect(scenario.host.users).toEqual([scenario.host.user]));
+
+        it("doesn't know the user as disconnected", () => expect(scenario.host.disconnectedUsers).toEqual([]));
     });
 
     describe("after closing the connection to an unknown client", () => {

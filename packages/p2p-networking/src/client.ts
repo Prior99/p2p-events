@@ -44,11 +44,11 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
      * Connect to a network.
      *
      * @param remotePeerId The id of the peer to connect to.
-     * @param userId If reconnecting to a previously disconnected session, provide this user id.
-     *
+     * @param user If reconnecting to a previously disconnected session, provide the user id.
+     *     Otherwise, if connecting initially, provide a user.
      * @returns A promise resolving once the client is fully connected.
      */
-    public async open(remotePeerId: string, userId?: string): Promise<ClientOpenResult> {
+    public async open(remotePeerId: string, user: string | Omit<TUser, "id">): Promise<ClientOpenResult> {
         const peerOpenResult = await super.createLocalPeer();
         this.networkMode = NetworkMode.CLIENT;
         this.emitEvent("networkchange", this.networkMode);
@@ -63,16 +63,17 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
                 this.connection!.on("data", (data) => this.handleHostPacket(data));
                 // In order to avoid collision in Safari and Chrome on Windows, wait until greeting.
                 await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
-                if (userId) {
+                if (typeof user === "string") {
                     this.sendClientPacketToHost({
                         packetType: ClientPacketType.HELLO_AGAIN,
                         versions: {
                             application: this.options.applicationProtocolVersion,
                             p2pNetwork: libraryVersion,
                         },
-                        userId,
+                        userId: user,
                     });
                 } else {
+                    this.userManager.addUser({ ...user, id: this.userId } as any); // eslint-disable-line
                     this.sendClientPacketToHost({
                         packetType: ClientPacketType.HELLO,
                         versions: {
@@ -106,13 +107,16 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
  * @see Client
  * @param options Options to use for connecting.
  * @param remotePeerId The peer id of the host to connect to.
+ * @param user If reconnecting to a previously disconnected session, provide the user id.
+ *     Otherwise, if connecting initially, provide a user.
  * @returns A promise resolving with the client once the client is fully connected.
  */
 export async function createClient<TUser extends User, TMessageType extends string | number>(
     options: PeerOptions<TUser>,
     remotePeerId: string,
+    user: string | Omit<TUser, "id">,
 ): Promise<Client<TUser, TMessageType>> {
     const client = new Client<TUser, TMessageType>(options);
-    await client.open(remotePeerId);
+    await client.open(remotePeerId, user);
     return client;
 }

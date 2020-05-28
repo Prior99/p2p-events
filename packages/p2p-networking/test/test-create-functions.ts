@@ -6,8 +6,8 @@ describe("createClient() and createHost()", () => {
     let client: Client<MockUser, MockMessageType>;
 
     beforeEach(async () => {
-        host = await createHost(mockPeerOptions());
-        client = await createClient(mockPeerOptions(), host.hostConnectionId!);
+        host = await createHost(mockPeerOptions(), { name: "Mr. Host" });
+        client = await createClient(mockPeerOptions(), host.hostConnectionId!, { name: "Mr. Client" });
     });
 
     it("client is client", () => expect(client.isClient).toBe(true));

@@ -18,5 +18,6 @@ describe("Broken peerjs", () => {
 
     afterEach(() => jest.spyOn(peerjs as any, "default").mockRestore());
 
-    it("can't create host", () => expect(createHost(mockPeerOptions())).rejects.toEqual(expect.any(Error)));
+    it("can't create host", () =>
+        expect(createHost(mockPeerOptions(), { name: "test" })).rejects.toEqual(expect.any(Error)));
 });

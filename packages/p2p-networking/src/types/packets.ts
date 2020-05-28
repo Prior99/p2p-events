@@ -29,6 +29,7 @@ export const enum HostPacketType {
     PING_INFO = "ping info",
     UPDATE_USER = "update user",
     INCOMPATIBLE = "incompatible",
+    KICK_USER = "kick user",
 }
 
 export const enum ClientPacketType {
@@ -64,6 +65,11 @@ export interface HostPacketUserConnected<TUser extends User> {
 
 export interface HostPacketUserReconnected {
     packetType: HostPacketType.USER_RECONNECTED;
+    userId: string;
+}
+
+export interface HostPacketKickUser {
+    packetType: HostPacketType.KICK_USER;
     userId: string;
 }
 
@@ -118,6 +124,7 @@ export type HostPacket<TMessageType extends string | number, TUser extends User,
     | HostPacketAcknowledgedByHost
     | HostPacketAcknowledgedByAll
     | HostPacketPingInfo
+    | HostPacketKickUser
     | HostPacketUpdateUser<TUser>
     | HostPacketIncompatible;
 

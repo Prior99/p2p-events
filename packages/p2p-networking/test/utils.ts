@@ -29,7 +29,6 @@ export function mockPeerOptions(override: Partial<HostOptions<MockUser>> = {}): 
     return {
         timeout: 0.05,
         applicationProtocolVersion: "1.0.0",
-        user: { name: "test" },
         welcomeDelay: 0.001,
         ...override,
     };
@@ -95,26 +94,26 @@ export async function scenarioFourPeers(
     resetHistory();
     const host = new Host<MockUser, MockMessageType>({
         ...mockPeerOptions(),
-        user: { name: "Mr. Host" },
         ...hostOptions,
     });
     const clients = Array.from({ length: 3 }).map(
-        (_, index) =>
+        () =>
             new Client<MockUser, MockMessageType>({
                 ...mockPeerOptions(),
-                user: { name: `Mr. Client #${index}` },
                 ...clientOptions,
             }),
     );
     if (!open) {
         return { host, clients, hostPeerId: "", clientPeerIds: [] };
     }
-    const hostOpenResult = await host.open();
+    const hostOpenResult = await host.open({ name: "Mr. Host" });
     const hostPeerId = hostOpenResult.peerId;
     const clientPeerIds = [];
+    let index = 0;
     for (const client of clients) {
-        const clientOpenResult = await client.open(hostPeerId);
+        const clientOpenResult = await client.open(hostPeerId, { name: `Mr. Client #${index}` });
         clientPeerIds.push(clientOpenResult.peerId);
+        index++;
         await new Promise((resolve) => setTimeout(resolve, 10));
     }
     return { host, clients, hostPeerId, clientPeerIds };
@@ -128,20 +127,18 @@ export async function scenarioSimple(
     resetHistory();
     const host = new Host<MockUser, MockMessageType>({
         ...mockPeerOptions(),
-        user: { name: "Mr. Host" },
         ...hostOptions,
     });
     const client = new Client<MockUser, MockMessageType>({
         ...mockPeerOptions(),
-        user: { name: "Mr. Client" },
         ...clientOptions,
     });
     if (!open) {
         return { host, client, hostPeerId: "", clientPeerId: "" };
     }
-    const hostOpenResult = await host.open();
+    const hostOpenResult = await host.open({ name: "Mr. Host" });
     const hostPeerId = hostOpenResult.peerId;
-    const clientOpenResult = await client.open(hostPeerId);
+    const clientOpenResult = await client.open(hostPeerId, { name: "Mr. Client" });
     const clientPeerId = clientOpenResult.peerId;
     await new Promise((resolve) => setTimeout(resolve, 10));
     return { host, client, clientPeerId, hostPeerId };

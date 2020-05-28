@@ -36,13 +36,63 @@ describe("Disconnecting", () => {
         ]);
     });
 
-    it("removed the user from host's users", () => {
-        expect(scenario.host.users).toEqual([
-            {
-                id: scenario.host.userId,
-                name: "Mr. Host",
-            },
-        ]);
+    it("lists the user as disconnected", () => expect(scenario.host.disconnectedUsers).toEqual([scenario.client.user]));
+
+    it("removed the user from host's users", () => expect(scenario.host.users).toEqual([scenario.host.user]));
+
+    describe("after kicking the disconnected user", () => {
+        let spyKick: jest.MockedFunction<any>;
+
+        beforeEach(async () => {
+            spyKick = jest.fn();
+            resetHistory();
+            scenario.host.on("userkick", spyKick);
+            await scenario.host.kickUser(scenario.client.userId);
+        });
+
+        it("calls the 'userkick' event listener", () => expect(spyKick).toHaveBeenCalledWith(scenario.client.userId));
+
+        it("doesn't lists the user as disconnected", () => expect(scenario.host.disconnectedUsers).toEqual([]));
+
+        it("removed the user from host's users", () => expect(scenario.host.users).toEqual([scenario.host.user]));
+
+        describe("reconnecting the kicked user", () => {
+            let spyReconnectHost: jest.MockedFunction<any>;
+            let spyUserConnect: jest.MockedFunction<any>;
+            let spyOpen: jest.MockedFunction<any>;
+            let spyHostError: jest.MockedFunction<any>;
+            let spyClientError: jest.MockedFunction<any>;
+            let rejectValue: any;
+
+            beforeEach(async () => {
+                resetHistory();
+                spyReconnectHost = jest.fn();
+                spyUserConnect = jest.fn();
+                spyHostError = jest.fn();
+                spyClientError = jest.fn();
+                spyOpen = jest.fn();
+                scenario.host.on("userreconnect", spyReconnectHost);
+                scenario.host.on("userconnect", spyUserConnect);
+                scenario.client.on("error", spyClientError);
+                scenario.client.on("open", spyOpen);
+                scenario.host.on("error", spyHostError);
+                await scenario.client
+                    .open(scenario.hostPeerId, scenario.client.userId)
+                    .catch((err) => (rejectValue = err));
+                await new Promise((resolve) => setTimeout(resolve, 10));
+            });
+
+            it("rejects", () => expect(rejectValue).toEqual(expect.any(Error)));
+
+            it("doesn't fire 'userreconnect' on host site", () => expect(spyReconnectHost).not.toHaveBeenCalled());
+
+            it("doesn't fire 'error' on host site", () => expect(spyHostError).not.toHaveBeenCalled());
+
+            it("doesn't fire 'open' on client site", () => expect(spyOpen).not.toHaveBeenCalled());
+
+            it("fires 'error' on client site", () =>
+                expect(spyClientError).toHaveBeenCalledWith(expect.any(Error), ErrorReason.OTHER));
+        });
     });
 
     describe("reconnecting", () => {
@@ -74,25 +124,21 @@ describe("Disconnecting", () => {
                 scenario.client.on("error", spyClientError);
                 scenario.client.on("open", spyOpen);
                 scenario.host.on("error", spyHostError);
-                await scenario.client.open(scenario.hostPeerId, "unknown-id").catch(err => rejectValue = err);
+                await scenario.client.open(scenario.hostPeerId, "unknown-id").catch((err) => (rejectValue = err));
                 await new Promise((resolve) => setTimeout(resolve, 10));
             });
 
             it("rejects", () => expect(rejectValue).toEqual(expect.any(Error)));
 
-            it("doesn't fire 'userreconnect' on host site", () =>
-                expect(spyReconnectHost).not.toHaveBeenCalled());
+            it("doesn't fire 'userreconnect' on host site", () => expect(spyReconnectHost).not.toHaveBeenCalled());
 
-            it("doesn't fire 'error' on host site", () =>
-                expect(spyHostError).not.toHaveBeenCalled());
+            it("doesn't fire 'error' on host site", () => expect(spyHostError).not.toHaveBeenCalled());
 
-            it("doesn't fire 'open' on client site", () =>
-                expect(spyOpen).not.toHaveBeenCalled());
+            it("doesn't fire 'open' on client site", () => expect(spyOpen).not.toHaveBeenCalled());
 
             it("fires 'error' on client site", () =>
                 expect(spyClientError).toHaveBeenCalledWith(expect.any(Error), ErrorReason.OTHER));
         });
-
 
         describe("with the same instance", () => {
             beforeEach(async () => {

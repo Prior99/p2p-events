@@ -421,7 +421,8 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
      * Start accepting connections.
      * @returns Promise that resolves once the host is ready to accept connections.
      */
-    public async open(): Promise<PeerOpenResult> {
+    public async open(user: Omit<TUser, "id">): Promise<PeerOpenResult> {
+        this.userManager.addUser({ ...user, id: this.userId } as any); // eslint-disable-line
         const openResult = await super.createLocalPeer();
         this.peer!.on("connection", (connection) => this.handleConnect(connection));
         this.startPing();
@@ -429,6 +430,36 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         this.emitEvent("networkchange", this.networkMode);
         this.emitEvent("open");
         return openResult;
+    }
+
+    /**
+     * Kick one user forever.
+     * @param userId The id of the user to kick.
+     */
+    public kickUser(userId: string): Promise<void> {
+        const userInfo = this.userManager.getUserInfo(userId);
+        if (!userInfo) {
+            throw new Error(`No user with id "${userId}".`);
+        }
+        if (!userInfo.disconnected) {
+            const connection = this.connections.get(userId);
+            connection?.dataConnection?.close();
+        }
+        const promise = new Promise<void>((resolve) => {
+            const kickListener = (kickedId: string): void => {
+                if (userId === kickedId) {
+                    this.removeEventListener("userkick", kickListener);
+                    resolve();
+                }
+            };
+            this.on("userkick", kickListener);
+        });
+        this.sendHostPacketToAll({
+            packetType: HostPacketType.KICK_USER,
+            userId,
+        });
+        this.connections.delete(userId);
+        return promise;
     }
 }
 
@@ -439,8 +470,9 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
  */
 export async function createHost<TUser extends User, TMessageType extends string | number>(
     options: HostOptions<TUser>,
+    user: Omit<TUser, "id">,
 ): Promise<Host<TUser, TMessageType>> {
     const host = new Host<TUser, TMessageType>(options);
-    await host.open();
+    await host.open(user);
     return host;
 }

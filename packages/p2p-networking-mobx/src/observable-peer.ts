@@ -25,6 +25,10 @@ export abstract class ObservablePeer<TUser extends User, TMessageType extends st
             action((userId) => this.userMap.delete(userId)),
         );
         this.peer.on(
+            "userreconnect",
+            action((user) => this.userMap.set(user.id, user)),
+        );
+        this.peer.on(
             "userupdate",
             action((user) => this.userMap.set(user.id, user)),
         );

@@ -1,21 +1,18 @@
-import { createHost, createClient, Host, Client } from "../src";
-import { mockPeerOptions, MockUser, MockMessageType } from "./utils";
+import { ScenarioSimple, scenarioSimple } from "./utils";
 import { resetHistory } from "./packet-history";
 
 describe("Ping interval", () => {
     let spyPing: jest.MockedFunction<any>;
-    let host: Host<MockUser, MockMessageType>;
-    let client: Client<MockUser, MockMessageType>;
+    let scenario: ScenarioSimple;
 
     beforeEach(async (done) => {
         spyPing = jest.fn(() => {
-            host.stopPing();
+            scenario.host.stopPing();
             done();
         });
-        host = await createHost(mockPeerOptions({ pingInterval: 0.001 }));
-        client = await createClient(mockPeerOptions(), host.hostConnectionId!);
+        scenario = await scenarioSimple(true, { pingInterval: 0.001 });
         resetHistory();
-        client.once("pinginfo", spyPing);
+        scenario.client.once("pinginfo", spyPing);
     });
 
     it("calls the ping handler", () => expect(spyPing).toBeCalled());

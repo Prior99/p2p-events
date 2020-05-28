@@ -36,14 +36,14 @@ describe("Registered message", () => {
                     .waitForHost()
                     .then(() => (hostAwaited = true))
                     .catch((err) => (hostError = err)),
-                new Promise((resolve) => setTimeout(resolve, 1)),
+                new Promise((resolve) => setTimeout(resolve, 10)),
             ]);
             await Promise.race([
                 message
                     .waitForAll()
                     .then(() => (allAwaited = true))
                     .catch((err) => (allError = err)),
-                new Promise((resolve) => setTimeout(resolve, 1)),
+                new Promise((resolve) => setTimeout(resolve, 10)),
             ]);
         });
 
