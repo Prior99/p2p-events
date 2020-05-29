@@ -1,6 +1,6 @@
 {
     "name": "p2p-networking-semantic-ui-react",
-    "version": "0.2.4",
+    "version": "0.2.5",
     "main": "dist/index.js",
     "scripts": {
         "prepublish": "yarn build",
