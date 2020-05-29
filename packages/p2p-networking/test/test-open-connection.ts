@@ -30,17 +30,8 @@ describe("Open connection", () => {
     it("has the same host connection ids for both peers", () =>
         expect(scenario.host.hostConnectionId).toBe(scenario.client.hostConnectionId));
 
-    it("can't close connection to itself", () =>
-        expect(() => scenario.host.closeConnectionToClient(scenario.host.userId)).toThrowError());
-
-    describe("after closing the connection to the client", () => {
-        beforeEach(async () => {
-            scenario.host.closeConnectionToClient(scenario.client.userId);
-            await new Promise((resolve) => setTimeout(resolve));
-        });
-
-        it("removed the client from the set of users", () => expect(scenario.host.users).toEqual([scenario.host.user!]));
-    });
+    it("can't kick itself", () =>
+        expect(() => scenario.host.kickUser(scenario.host.userId)).toThrowError());
 
     it("can't kick unknown user", () => expect(() => scenario.host.kickUser("unknown-id")).toThrowError());
 
@@ -52,19 +43,6 @@ describe("Open connection", () => {
         it("doesn't know the user", () => expect(scenario.host.users).toEqual([scenario.host.user!]));
 
         it("doesn't know the user as disconnected", () => expect(scenario.host.disconnectedUsers).toEqual([]));
-    });
-
-    describe("after closing the connection to an unknown client", () => {
-        let spyError: jest.MockedFunction<any>;
-
-        beforeEach(async () => {
-            spyError = jest.fn();
-            scenario.host.once("error", spyError);
-            scenario.host.closeConnectionToClient("unknown-id");
-        });
-
-        it("calls the error handler", () =>
-            expect(spyError).toHaveBeenCalledWith(expect.any(Error), ErrorReason.INTERNAL));
     });
 
     it("has sent the expected Packets", () => {

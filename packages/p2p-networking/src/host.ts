@@ -112,30 +112,38 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                 continue;
             }
             this.emitEvent("error", new NetworkError(`Client with id "${userId}" timed out.`), ErrorReason.NETWORK);
-            this.closeConnectionToClient(userId);
+            this.handleDisconnect(userId);
         }
         pendingPing.listener.reject(new NetworkError("Not all pings returned within timeout."));
+    }
+
+    protected handleDisconnect(userId: string): void {
+        this.sendHostPacketToAll({
+            packetType: HostPacketType.USER_DISCONNECTED,
+            userId,
+        });
+        this.closeConnectionToClient(userId);
     }
 
     /**
      * Closes the connection to one specific client.
      * @param userId The user id of the user associated with the connection to close.
      */
-    public closeConnectionToClient(userId: string): void {
-        const connection = this.connections.get(userId);
+    protected closeConnectionToClient(userId: string): void {
         if (userId === this.userId) {
             throw new Error("Host can't close connection to itself.");
         }
+        for (const [serialId, relayedMessageState] of this.relayedMessageStates) {
+            if (!relayedMessageState.acknowledgedBy.has(userId)) {
+                this.handleAcknowledge(serialId, userId);
+            }
+        }
+        const connection = this.connections.get(userId);
         if (!connection) {
-            this.throwError(new InternalError("Can't close connection to unknown client."));
             return;
         }
         connection.dataConnection!.close();
         this.connections.delete(userId);
-        this.sendHostPacketToAll({
-            packetType: HostPacketType.USER_DISCONNECTED,
-            userId,
-        });
     }
 
     /**
@@ -222,10 +230,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                 );
                 break;
             case ClientPacketType.DISCONNECT:
-                this.sendHostPacketToAll({
-                    packetType: HostPacketType.USER_DISCONNECTED,
-                    userId,
-                });
+                this.handleDisconnect(userId);
                 break;
             case ClientPacketType.PONG: {
                 this.userManager.updatePingInfo(userId, {
@@ -269,34 +274,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
             }
             case ClientPacketType.ACKNOWLEDGE: {
                 const { serialId } = packet;
-                const relayedMessageState = this.relayedMessageStates.get(serialId);
-                /* istanbul ignore if */
-                if (!relayedMessageState) {
-                    this.throwError(
-                        new InternalError(
-                            `User "${userId}" acknowledged message with unknown serial id "${serialId}".`,
-                        ),
-                    );
-                    return;
-                }
-                /* istanbul ignore if */
-                if (relayedMessageState.acknowledgedBy.has(userId)) {
-                    this.throwError(
-                        new InternalError(`User "${userId}" acknowledged message with serial id "${serialId}" twice.`),
-                    );
-                    return;
-                }
-                relayedMessageState.acknowledgedBy.add(userId);
-                if (
-                    relayedMessageState.acknowledgedBy.size ===
-                    (relayedMessageState.targets?.length ?? this.userManager.connectedCount)
-                ) {
-                    this.sendHostPacketToUser(relayedMessageState.message.originUserId, {
-                        packetType: HostPacketType.ACKNOWLEDGED_BY_ALL,
-                        serialId,
-                    });
-                    this.relayedMessageStates.delete(serialId);
-                }
+                this.handleAcknowledge(serialId, userId);
                 break;
             }
             case ClientPacketType.UPDATE_USER:
@@ -316,6 +294,35 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
             /* istanbul ignore next */
             default:
                 unreachable(packet);
+        }
+    }
+
+    protected handleAcknowledge(serialId: string, userId: string): void {
+        const relayedMessageState = this.relayedMessageStates.get(serialId);
+        /* istanbul ignore if */
+        if (!relayedMessageState) {
+            this.throwError(
+                new InternalError(`User "${userId}" acknowledged message with unknown serial id "${serialId}".`),
+            );
+            return;
+        }
+        /* istanbul ignore if */
+        if (relayedMessageState.acknowledgedBy.has(userId)) {
+            this.throwError(
+                new InternalError(`User "${userId}" acknowledged message with serial id "${serialId}" twice.`),
+            );
+            return;
+        }
+        relayedMessageState.acknowledgedBy.add(userId);
+        if (
+            relayedMessageState.acknowledgedBy.size ===
+            (relayedMessageState.targets?.length ?? this.userManager.connectedCount)
+        ) {
+            this.sendHostPacketToUser(relayedMessageState.message.originUserId, {
+                packetType: HostPacketType.ACKNOWLEDGED_BY_ALL,
+                serialId,
+            });
+            this.relayedMessageStates.delete(serialId);
         }
     }
 
@@ -354,7 +361,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
             if (!userId) {
                 return;
             }
-            this.closeConnectionToClient(userId);
+            this.handleDisconnect(userId);
         });
         dataConnection.on("data", async (json) => {
             const message: ClientPacket<TMessageType, TUser, unknown> = json;
@@ -445,10 +452,6 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         if (!userInfo) {
             throw new Error(`No user with id "${userId}".`);
         }
-        if (!userInfo.disconnected) {
-            const connection = this.connections.get(userId);
-            connection?.dataConnection?.close();
-        }
         const promise = new Promise<void>((resolve) => {
             const kickListener = (kickedId: string): void => {
                 if (userId === kickedId) {
@@ -462,7 +465,9 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
             packetType: HostPacketType.KICK_USER,
             userId,
         });
-        this.connections.delete(userId);
+        if (!userInfo.disconnected) {
+            this.closeConnectionToClient(userId);
+        }
         return promise;
     }
 }

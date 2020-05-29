@@ -95,6 +95,97 @@ describe("Registered message four peers", () => {
         });
     });
 
+    describe("client disconnecting before acknowledge", () => {
+        let sendResult: SentMessageHandle<MockMessageType, MockPayload>;
+        let spyResolve: jest.MockedFunction<any>;
+
+        beforeEach(async () => {
+            spyResolve = jest.fn();
+            resetHistory();
+            sendResult = clientMessageFactories[0].send({ test: "something" });
+            await sendResult.waitForHost();
+            scenario.clients[2].close();
+            await sendResult.waitForAll().then(spyResolve);
+        });
+
+        it("resolves `waitForAll`", () => expect(spyResolve).toHaveBeenCalled());
+
+        it("has sent the expected messages", () => {
+            expect(getHistory()).toEqual([
+                mockHistoryPacket(scenario.clientPeerIds[0], scenario.hostPeerId, ClientPacketType.MESSAGE, {
+                    message: {
+                        createdDate: expect.any(Number),
+                        messageType: MockMessageType.MOCK_MESSAGE,
+                        originUserId: scenario.clients[0].userId,
+                        serialId: sendResult.message.serialId,
+                        payload: {
+                            test: "something",
+                        },
+                    },
+                }),
+                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[0], HostPacketType.ACKNOWLEDGED_BY_HOST, {
+                    serialId: sendResult.message.serialId,
+                }),
+                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[0], HostPacketType.RELAYED_MESSAGE, {
+                    message: {
+                        createdDate: expect.any(Number),
+                        messageType: MockMessageType.MOCK_MESSAGE,
+                        originUserId: scenario.clients[0].userId,
+                        serialId: sendResult.message.serialId,
+                        payload: {
+                            test: "something",
+                        },
+                    },
+                }),
+                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[1], HostPacketType.RELAYED_MESSAGE, {
+                    message: {
+                        createdDate: expect.any(Number),
+                        messageType: MockMessageType.MOCK_MESSAGE,
+                        originUserId: scenario.clients[0].userId,
+                        serialId: sendResult.message.serialId,
+                        payload: {
+                            test: "something",
+                        },
+                    },
+                }),
+                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[2], HostPacketType.RELAYED_MESSAGE, {
+                    message: {
+                        createdDate: expect.any(Number),
+                        messageType: MockMessageType.MOCK_MESSAGE,
+                        originUserId: scenario.clients[0].userId,
+                        serialId: sendResult.message.serialId,
+                        payload: {
+                            test: "something",
+                        },
+                    },
+                }),
+                mockHistoryPacket(scenario.clientPeerIds[2], scenario.hostPeerId, ClientPacketType.DISCONNECT, {
+                }),
+                mockHistoryPacket(scenario.clientPeerIds[0], scenario.hostPeerId, ClientPacketType.ACKNOWLEDGE, {
+                    serialId: sendResult.message.serialId,
+                }),
+                mockHistoryPacket(scenario.clientPeerIds[1], scenario.hostPeerId, ClientPacketType.ACKNOWLEDGE, {
+                    serialId: sendResult.message.serialId,
+                }),
+                mockHistoryPacket(scenario.clientPeerIds[2], scenario.hostPeerId, ClientPacketType.ACKNOWLEDGE, {
+                    serialId: sendResult.message.serialId,
+                }),
+                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[0], HostPacketType.USER_DISCONNECTED, {
+                    userId: scenario.clients[2].userId,
+                }),
+                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[1], HostPacketType.USER_DISCONNECTED, {
+                    userId: scenario.clients[2].userId,
+                }),
+                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[2], HostPacketType.USER_DISCONNECTED, {
+                    userId: scenario.clients[2].userId,
+                }),
+                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[0], HostPacketType.ACKNOWLEDGED_BY_ALL, {
+                    serialId: sendResult.message.serialId,
+                }),
+            ]);
+        });
+    });
+
     describe("client sending the message to host", () => {
         let sendResult: SentMessageHandle<MockMessageType, MockPayload>;
 

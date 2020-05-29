@@ -9,8 +9,6 @@ export class ObservableHost<TUser extends User, TMessageType extends string | nu
         super(new Host(inputOptions));
     }
 
-    public closeConnectionToClient: Host<TUser, TMessageType>["closeConnectionToClient"] = (...args) =>
-        this.host.closeConnectionToClient(...args);
     public ping: Host<TUser, TMessageType>["ping"] = (...args) => this.host.ping(...args);
     public startPing: Host<TUser, TMessageType>["startPing"] = (...args) => this.host.startPing(...args);
     public stopPing: Host<TUser, TMessageType>["stopPing"] = (...args) => this.host.stopPing(...args);

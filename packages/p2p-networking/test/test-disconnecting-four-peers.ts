@@ -95,9 +95,6 @@ describe("Disconnecting four peers", () => {
                 mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[0], HostPacketType.KICK_USER, {
                     userId: disconnectedClient.userId,
                 }),
-                mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[1], HostPacketType.KICK_USER, {
-                    userId: disconnectedClient.userId,
-                }),
                 mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[2], HostPacketType.KICK_USER, {
                     userId: disconnectedClient.userId,
                 }),
@@ -168,10 +165,10 @@ describe("Disconnecting four peers", () => {
                     mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[0], HostPacketType.USER_RECONNECTED, {
                         userId: disconnectedClient.userId,
                     }),
-                    mockHistoryPacket(scenario.hostPeerId, newPeerId, HostPacketType.USER_RECONNECTED, {
+                    mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[2], HostPacketType.USER_RECONNECTED, {
                         userId: disconnectedClient.userId,
                     }),
-                    mockHistoryPacket(scenario.hostPeerId, scenario.clientPeerIds[2], HostPacketType.USER_RECONNECTED, {
+                    mockHistoryPacket(scenario.hostPeerId, newPeerId, HostPacketType.USER_RECONNECTED, {
                         userId: disconnectedClient.userId,
                     }),
                 ]);
