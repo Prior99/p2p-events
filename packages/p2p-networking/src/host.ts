@@ -465,9 +465,7 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
             packetType: HostPacketType.KICK_USER,
             userId,
         });
-        if (!userInfo.disconnected) {
-            this.closeConnectionToClient(userId);
-        }
+        this.closeConnectionToClient(userId);
         return promise;
     }
 }
