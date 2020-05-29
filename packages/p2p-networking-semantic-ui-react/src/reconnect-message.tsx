@@ -106,7 +106,14 @@ export class ReconnectMessage<TUser extends User, TMessageType extends string | 
     }
 
     public render(): JSX.Element {
-        const { translations: _translations, urlFactory: _urlFactory, peer: _peer, popupProps, ...rest } = this.props;
+        const {
+            popupProps,
+            peer: _peer,
+            userId: _userId,
+            translations: _translations,
+            urlFactory: _urlFactory,
+            ...rest
+        } = this.props;
         return (
             <Message negative {...rest} icon>
                 <Icon name="warning circle" />
