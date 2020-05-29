@@ -1,6 +1,6 @@
 {
     "name": "p2p-networking-semantic-ui-react",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "main": "dist/index.js",
     "scripts": {
         "prepublish": "yarn build",
@@ -51,7 +51,7 @@
         "mobx": "^5.15.4",
         "mobx-react": "^6.2.2",
         "node-sass": "^4.14.1",
-        "p2p-networking-mobx": "^0.2.0",
+        "p2p-networking-mobx": "^0.2.1",
         "prettier": "^2.0.5",
         "react": "^16.13.1",
         "react-router": "^5.2.0",
