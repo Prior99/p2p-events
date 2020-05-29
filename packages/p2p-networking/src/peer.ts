@@ -178,6 +178,7 @@ export type PeerEventArgumentMapping<TMessageType extends string | number, TUser
     close: [];
     userreconnect: [TUser];
     userkick: [string];
+    useridchange: [string];
 };
 
 /**
@@ -264,6 +265,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
         close: new Set(),
         userreconnect: new Set(),
         userkick: new Set(),
+        useridchange: new Set(),
     };
     /**
      * Listeners for the result of updating the user. `.updateUser()` returns a promise that should resolve
@@ -370,6 +372,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
      *  * `"open"`: When the connection is open and ready to use.
      *  * `"userreconnect"`: When a user reconnected.
      *  * `"userkick"`: When a user is kicked.
+     *  * `"useridchange"`: When the own user id changes.
      * @param handler The handler that shall be called if the specified event occurs. The arguments
      *    vary depending on the event's type.
      */
@@ -553,6 +556,7 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 break;
             case HostPacketType.WELCOME_BACK:
                 this.userId = packet.userId;
+                this.emitEvent("useridchange", this.userId);
                 this.userManager.initialize(packet.users, true);
                 this.emitEvent("connect");
                 break;

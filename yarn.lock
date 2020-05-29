@@ -7818,6 +7818,11 @@ node-sass@^4.14.1:
     stdout-stream "^1.4.0"
     "true-case-path" "^1.0.2"
 
+nomine-lipsum@^2.1.2:
+  version "2.1.2"
+  resolved "https://registry.yarnpkg.com/nomine-lipsum/-/nomine-lipsum-2.1.2.tgz#6ce762317b8a2bd45ba93d348512cc8af1c60fe5"
+  integrity sha512-gDfFknhyevN9z6Zu4EDCNKy8GJjDmZ8Oq1piyutg7SR1Jh7DH7SjR0q10bOj1m3NeLq7HI0KC2Oo8oVpHvsZhw==
+
 "nopt@2 || 3":
   version "3.0.6"
   resolved "https://registry.yarnpkg.com/nopt/-/nopt-3.0.6.tgz#c6465dbf08abcd4db359317f79ac68a646b28ff9"
@@ -8304,6 +8309,11 @@ p-waterfall@^1.0.0:
   integrity sha1-ftlLPOszMngjU69qrhGqn8I1uwA=
   dependencies:
     p-reduce "^1.0.0"
+
+p2p-networking-mobx@^0.1.5:
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/p2p-networking-mobx/-/p2p-networking-mobx-0.1.5.tgz#d40f7fee47fbf06399a14291f981e8bb3239e29e"
+  integrity sha512-X6jorRKledr1uPRb7cSX9UDOOGlf2qYJkjFZ+9J3MbksBVxVxjxBq5J4Kji73QbouCOLOW/jK+VLaGKw0OI3+Q==
 
 pako@~1.0.5:
   version "1.0.11"

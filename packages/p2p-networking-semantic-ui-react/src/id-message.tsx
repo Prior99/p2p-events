@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Popup, Message, Icon, MessageProps, PopupProps } from "semantic-ui-react";
+import { Popup, Message, Icon, MessageProps, PopupProps, Button } from "semantic-ui-react";
 import { computed, action } from "mobx";
 import { observer } from "mobx-react";
 import { ObservablePeer } from "p2p-networking-mobx";
@@ -8,11 +8,15 @@ import { User } from "p2p-networking";
 export interface IdMessageProps<TUser extends User, TMessageType extends string | number> extends MessageProps {
     peer?: ObservablePeer<TUser, TMessageType>;
     translations?: {
+        connectHeader?: string;
+        connectDescription?: (peerId: string) => string;
         loadingHeader?: string;
         loadingDescription?: string;
         disconnectedHeader?: string;
         disconnectedDescription?: string;
         copiedToClipboard?: string;
+        copy?: string;
+        open?: string;
         cantCopy?: (url: string) => string;
     };
     urlFactory: (id: string) => string;
@@ -63,12 +67,30 @@ export class IdMessage<TUser extends User, TMessageType extends string | number>
         return this.props.translations?.disconnectedDescription ?? "Peer connection closed.";
     }
 
+    @computed private get translationConnectHeader(): string {
+        return this.props.translations?.connectHeader ?? "Invite";
+    }
+
+    @computed private get translationConnectDescription(): string {
+        return this.props.translations?.connectDescription
+            ? this.props.translations.connectDescription(this.props.peer?.hostConnectionId ?? "")
+            : this.props.peer?.hostConnectionId ?? "";
+    }
+
     @computed private get translationLoadingHeader(): string {
         return this.props.translations?.loadingHeader ?? "Loading...";
     }
 
     @computed private get translationLoadingDescription(): string {
         return this.props.translations?.loadingDescription ?? "Waiting to open peer connection.";
+    }
+
+    @computed private get translationCopy(): string {
+        return this.props.translations?.copy ?? "Copy";
+    }
+
+    @computed private get translationOpen(): string {
+        return this.props.translations?.open ?? "Open";
     }
 
     public render(): JSX.Element {
@@ -96,21 +118,27 @@ export class IdMessage<TUser extends User, TMessageType extends string | number>
             );
         }
         return (
-            <Popup
-                {...popupProps}
-                on="click"
-                inverted
-                trigger={
-                    <Message
-                        {...rest}
-                        positive
-                        icon="globe"
-                        onClick={this.handleIdClick}
-                        content={peer.hostConnectionId}
+            <Message icon {...rest} positive style={{ cursor: "pointer" }}>
+                <Icon name="globe" />
+                <Message.Content>
+                    <Message.Header>{this.translationConnectHeader}</Message.Header>
+                    {this.translationConnectDescription}
+                </Message.Content>
+                <Message.Content style={{ textAlign: "right" }}>
+                    <Popup
+                        {...popupProps}
+                        on="click"
+                        inverted
+                        trigger={
+                            <Button basic content={this.translationCopy} icon="copy" onClick={this.handleIdClick} />
+                        }
+                        content={this.popupText}
                     />
-                }
-                content={this.popupText}
-            />
+                    <a href={this.url} target="_blank" rel="noreferrer">
+                        <Button basic content={this.translationOpen} icon="external" onClick={this.handleIdClick} />
+                    </a>
+                </Message.Content>
+            </Message>
         );
     }
 }

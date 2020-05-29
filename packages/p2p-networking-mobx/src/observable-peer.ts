@@ -18,6 +18,10 @@ export abstract class ObservablePeer<TUser extends User, TMessageType extends st
         this.networkMode = this.peer.networkMode;
 
         this.peer.on(
+            "useridchange",
+            action((userId) => (this.userId = userId)),
+        );
+        this.peer.on(
             "userconnect",
             action((user) => this.userMap.set(user.id, user)),
         );
@@ -111,7 +115,14 @@ export abstract class ObservablePeer<TUser extends User, TMessageType extends st
         return Array.from(this.userMap.values()).sort((a, b) => a.id.localeCompare(b.id));
     }
 
-    public getUser: Peer<TUser, TMessageType>["getUser"] = (...args) => this.peer.getUser(...args);
+    public getUser(userId: string): TUser | undefined {
+        const disconnectedUser = this.disconnectedUsers.find((user) => user.id === userId);
+        if (disconnectedUser) {
+            return disconnectedUser;
+        }
+        return this.userMap.get(userId);
+    }
+
     public on: Peer<TUser, TMessageType>["on"] = (...args) => this.peer.on(...args);
     public addEventListener: Peer<TUser, TMessageType>["addEventListener"] = (...args) =>
         this.peer.addEventListener(...args);

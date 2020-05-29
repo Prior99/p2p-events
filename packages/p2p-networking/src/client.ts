@@ -50,8 +50,6 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
      */
     public async open(remotePeerId: string, userInit: string | Omit<TUser, "id">): Promise<ClientOpenResult> {
         const peerOpenResult = await super.createLocalPeer();
-        this.networkMode = NetworkMode.CLIENT;
-        this.emitEvent("networkchange", this.networkMode);
         await new Promise((resolve, reject) => {
             this.connection = this.peer!.connect(remotePeerId, { reliable: true });
             const errorListener = (error: unknown): void => {
@@ -96,6 +94,8 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
                 this.once("error", peerErrorListener);
                 this.once("connect", () => {
                     this.removeEventListener("error", peerErrorListener);
+                    this.networkMode = NetworkMode.CLIENT;
+                    this.emitEvent("networkchange", this.networkMode);
                     resolve();
                 });
             });
@@ -105,6 +105,19 @@ export class Client<TUser extends User, TMessageType extends string | number> ex
         this.emitEvent("open");
 
         return { ...peerOpenResult, remotePeerId };
+    }
+
+    /**
+     * After the connection was closed, call this method to reconnect to the same host as the same user.
+     */
+    public async reconnect(): Promise<ClientOpenResult> {
+        if (!this.hostConnectionId) {
+            throw new Error("Unknown host connection id.");
+        }
+        if (this.networkMode !== NetworkMode.DISCONNECTED) {
+            throw new Error("Not disconnected.");
+        }
+        return await this.open(this.hostConnectionId, this.userId);
     }
 }
 

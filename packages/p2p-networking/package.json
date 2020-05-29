@@ -21,7 +21,8 @@
         "prepublish": "yarn build",
         "lint": "eslint --max-warnings 0 src/**/*.ts test/**/*.ts",
         "predocs": "yarn generate-version",
-        "docs": "typedoc --mode file --out docs/ --exclude '**/test-*.ts,**/report-viewer/**/*' src/"
+        "docs": "typedoc --mode file --out docs/ --exclude '**/test-*.ts,**/report-viewer/**/*' src/",
+        "start": "tsc -p . --watch"
     },
     "eslintConfig": {
         "extends": "../../eslint-defaults.json"

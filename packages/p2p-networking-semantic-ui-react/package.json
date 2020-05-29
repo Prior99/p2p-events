@@ -5,7 +5,8 @@
     "scripts": {
         "prepublish": "yarn build",
         "build": "tsc -p .",
-        "lint": "eslint --max-warnings 0 src/**/*.ts src/**/*.tsx"
+        "lint": "eslint --max-warnings 0 src/**/*.ts src/**/*.tsx",
+        "start": "tsc -p . --watch"
     },
     "license": "MIT",
     "eslintConfig": {

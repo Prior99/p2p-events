@@ -146,7 +146,7 @@ describe("Disconnecting four peers", () => {
                     });
                 });
                 disconnectedClient.on("open", spyOpen);
-                const result = await disconnectedClient.open(scenario.hostPeerId, disconnectedClient.userId);
+                const result = await disconnectedClient.reconnect();
                 newPeerId = result.peerId;
             });
 

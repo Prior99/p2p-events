@@ -3,6 +3,7 @@
         "build": "lerna run build",
         "prepare": "lerna bootstrap",
         "test": "lerna run test",
+        "start": "lerna run start",
         "docs": "lerna run docs",
         "lint": "lerna run lint"
     },

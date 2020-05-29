@@ -1,6 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react";
-import { Table, TableRowProps } from "semantic-ui-react";
+import { Table, TableRowProps, Button, Icon } from "semantic-ui-react";
 import { computed } from "mobx";
 import { User } from "p2p-networking";
 
@@ -9,6 +9,11 @@ export interface UserTableRowProps<TUser extends User> extends TableRowProps {
     customCells?: JSX.Element;
     nameFactory: (user: TUser) => string;
     roundTripTime: number;
+    onKick?: (userId: string) => void;
+    kickLoading?: boolean;
+    disconnected?: boolean;
+    canKick?: boolean;
+    own?: boolean;
 }
 
 @observer
@@ -24,16 +29,33 @@ export class UserTableRow<TUser extends User> extends React.Component<UserTableR
     public render(): JSX.Element {
         const {
             customCells,
-            user: _user,
+            user,
             nameFactory: _nameFactory,
             roundTripTime: _roundTripTime,
+            onKick,
+            kickLoading,
+            disconnected,
+            canKick,
+            own,
             ...rest
         } = this.props;
         return (
-            <Table.Row {...rest}>
+            <Table.Row positive={own} error={disconnected} {...rest}>
                 <Table.Cell>{this.name}</Table.Cell>
                 {customCells ? customCells : <></>}
-                <Table.Cell textAlign="right">{this.roundTripTime}</Table.Cell>
+                <Table.Cell textAlign="right">{disconnected ? <Icon name="broken chain" /> : this.roundTripTime}</Table.Cell>
+                {onKick && (
+                    <Table.Cell>
+                        <Button
+                            size="mini"
+                            onClick={() => onKick(user.id)}
+                            loading={kickLoading}
+                            disabled={kickLoading || !canKick}
+                            icon="ban"
+                            basic
+                        />
+                    </Table.Cell>
+                )}
             </Table.Row>
         );
     }

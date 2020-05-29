@@ -1,6 +1,7 @@
 import * as React from "react";
 import { observer } from "mobx-react";
 import { observable, action } from "mobx";
+import { Form } from "semantic-ui-react";
 
 export interface CreateTodoFormProps {
     onCreate: (title: string) => void;
@@ -18,16 +19,18 @@ export class CreateTodoForm extends React.Component<CreateTodoFormProps> {
 
     public render(): JSX.Element {
         return (
-            <form onSubmit={this.handleSubmit}>
-                <label>
-                    Title
-                    <input value={this.title} onChange={(evt) => (this.title = evt.currentTarget.value)} />
-                </label>
-                <label>
-                    Create
-                    <button>Okay</button>
-                </label>
-            </form>
+            <Form onSubmit={this.handleSubmit}>
+                <Form.Group inline>
+                    <Form.Field>
+                        <label>Title</label>
+                        <Form.Input value={this.title} onChange={(evt) => (this.title = evt.currentTarget.value)} />
+                    </Form.Field>
+                    <Form.Field>
+                        <label>Create</label>
+                        <Form.Button>Okay</Form.Button>
+                    </Form.Field>
+                </Form.Group>
+            </Form>
         );
     }
 }

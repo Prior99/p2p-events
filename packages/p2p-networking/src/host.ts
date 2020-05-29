@@ -387,6 +387,8 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
                     this.sendHostPacketToPeer(dataConnection, {
                         packetType: HostPacketType.RECONNECT_FAILED,
                     });
+                    // In order to avoid collision in Safari and Chrome on Windows, wait until announcing.
+                    await new Promise((resolve) => setTimeout(resolve, this.options.welcomeDelay * 1000));
                     dataConnection.close();
                     return;
                 }

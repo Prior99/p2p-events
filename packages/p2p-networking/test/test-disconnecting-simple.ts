@@ -145,7 +145,7 @@ describe("Disconnecting", () => {
                 resetHistory();
                 scenario.client.on("userreconnect", spyReconnectClient);
                 scenario.client.on("open", spyOpen);
-                const result = await scenario.client.open(scenario.hostPeerId, scenario.client.userId);
+                const result = await scenario.client.reconnect();
                 newPeerId = result.peerId;
                 await new Promise((resolve) => setTimeout(resolve, 10));
             });

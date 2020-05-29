@@ -15,6 +15,7 @@ export class ObservableClient<TUser extends User, TMessageType extends string | 
     }
 
     public open: Client<TUser, TMessageType>["open"] = (...args) => this.client.open(...args);
+    public reconnect: Client<TUser, TMessageType>["reconnect"] = (...args) => this.client.reconnect(...args);
 }
 
 export async function createObservableClient<TUser extends User, TMessageType extends string | number>(

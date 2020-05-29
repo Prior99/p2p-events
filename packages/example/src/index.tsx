@@ -1,4 +1,5 @@
 import * as React from "react";
+import NomineLipsum from "nomine-lipsum";
 import * as ReactDOM from "react-dom";
 import { ObservablePeer, createObservableClient, createObservableHost, ObservableHost } from "p2p-networking-mobx";
 import { Messages, TodoUser, AddTodo, CheckTodo, DeleteTodo, Todo, CurrentState } from "./types";
@@ -16,12 +17,12 @@ async function createPeer(): Promise<ObservablePeer<TodoUser, Messages>> {
             secure: true,
         },
     };
-    const user = { name: "Unknown" };
+    const user = { name: NomineLipsum.full() };
     if (location.hash) {
         const [peerId, userId] = location.hash.replace("#", "").split("/");
         return await createObservableClient(options, peerId, userId ? userId : user);
     }
-    return await createObservableHost({ ...options, pingInterval: 5 }, user);
+    return await createObservableHost({ ...options, pingInterval: 2, timeout: 5 }, user);
 }
 
 async function main(): Promise<void> {
@@ -46,17 +47,13 @@ async function main(): Promise<void> {
     deleteTodo.subscribe(({ id }) => todos.replace(todos.filter((todo) => todo.id !== id)));
     currentState.subscribe(({ todos: currentTodods }) => todos.replace(currentTodods));
 
-    peer.on("userconnect", (user) => {
+    const sendState = (user: TodoUser): void => {
         if (peer.isHost) {
             currentState.send({ todos }, user.id);
         }
-    });
-
-    peer.on("userreconnect", (user) => {
-        if (peer.isHost) {
-            currentState.send({ todos }, user.id);
-        }
-    });
+    };
+    peer.on("userconnect", sendState);
+    peer.on("userreconnect", sendState);
 
     ReactDOM.render(
         <App
