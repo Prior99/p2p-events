@@ -218,7 +218,6 @@ export class Host<TUser extends User, TMessageType extends string | number> exte
         const connection = this.connections.get(userId);
         /* istanbul ignore if */
         if (!connection) {
-            this.throwError(new InternalError(`Connection meta for user "${userId}" missing.`));
             return;
         }
         switch (packet.packetType) {

@@ -95,6 +95,26 @@ describe("Four peers", () => {
         );
     });
 
+    describe("kicking when pinging", () => {
+        let spyDate: jest.SpiedFunction<any>;
+        const now = 1590160273660;
+        let spyError: jest.MockedFunction<any>;
+
+        beforeEach(async () => {
+            resetHistory();
+            spyDate = jest.spyOn(Date, "now").mockImplementation(() => now);
+            spyError = jest.fn();
+            scenario.host.on("error", spyError);
+            scenario.host.ping();
+            await scenario.host.kickUser(scenario.clients[1].userId);
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        });
+
+        afterEach(() => spyDate.mockRestore());
+
+        it("produces no error", () => expect(spyError).not.toHaveBeenCalled());
+    });
+
     describe("after kicking a client", () => {
         let connectedClients: Client<MockUser, MockMessageType>[];
         let kickedClient: Client<MockUser, MockMessageType>;

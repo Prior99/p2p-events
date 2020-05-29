@@ -569,6 +569,9 @@ export abstract class Peer<TUser extends User, TMessageType extends string | num
                 this.emitEvent("userconnect", packet.user);
                 break;
             case HostPacketType.USER_DISCONNECTED:
+                if (!this.userManager.getUserInfo(packet.userId)) {
+                    return;
+                }
                 this.userManager.disconnectUser(packet.userId);
                 this.emitEvent("userdisconnect", packet.userId);
                 break;
