@@ -50,7 +50,7 @@
         "eslint-plugin-react": "^7.20.0",
         "mobx": "^5.15.4",
         "mobx-react": "^6.2.2",
-        "node-sass": "^4.14.1",
+        "node-sass": "^7.0.0",
         "p2p-networking-mobx": "^0.2.4",
         "prettier": "^2.0.5",
         "react": "^16.13.1",
